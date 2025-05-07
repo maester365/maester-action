@@ -1,0 +1,79 @@
+on:
+  push:
+    branches:
+    - main
+    paths:
+      - '.github/workflows/test-action.yml'
+      - 'action.yml'
+      - 'script/**'
+  workflow_dispatch:
+  pull_request:
+    branches:
+    - main
+    paths:
+      - '.github/workflows/test-action.yml'
+      - 'action.yml'
+      - 'script/**'
+
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+
+jobs:
+  test-matix:
+    strategy:
+      matrix:
+        maester: ["latest", "preview"]
+    #continue-on-error: ${{ matrix.maester == 'preview' }}
+    name: "Maester 🔥 ${{ matrix.maester }}"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check preconditions 📃
+        id: preconditions
+        run: |
+          if [ "${{ secrets.AZURE_CLIENT_ID }}" == "" ]; then
+            echo "::error title=Missing secret::AZURE_CLIENT_ID is not set."
+            echo "secret_missing=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "${{ secrets.AZURE_TENANT_ID }}" == "" ]; then
+            echo "::error title=Missing secret::AZURE_TENANT_ID is not set."
+            echo "secret_missing=true" >> "$GITHUB_OUTPUT"
+          fi
+      
+      # It seems you need to checkout the code before you can use an action from the same repo
+      - name: Load action ✅
+        if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Run Maester 🔥
+        id: maester
+        if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
+        uses: ./ # meaning run the action from current repo
+        with:
+          client_id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          include_public_tests: true
+          include_private_tests: false
+          include_exchange: false
+          include_teams: false
+          step_summary: ${{ matrix.maester == 'preview'}}
+          artifact_upload: true
+          maester_version: ${{ matrix.maester }}
+          public_tests_ref: main
+          disable_telemetry: true
+          notification_teams_webhook: https://webhook.site/6349a4fa-9f43-4224-9e37-a3f5117514d6
+      
+      - name: Output results 📃
+        if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
+        run: |
+          echo "The result of the test run is: ${{ steps.maester.outputs.result }}"
+          echo "Total tests: ${{ steps.maester.outputs.tests_total }}"
+          echo "Passed tests: ${{ steps.maester.outputs.tests_passed }}"
+          echo "Failed tests: ${{ steps.maester.outputs.tests_failed }}"
+          echo "Skipped tests: ${{ steps.maester.outputs.tests_skipped }}"
+
+ 

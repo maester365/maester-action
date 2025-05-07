@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://maester.dev
+    about: Have you checked the documentation?
+  - name: Discord
+    url: https://discord.maester.dev/
+    about: Ask your questions here
+  - name: Module issues
+    url: https://github.com/maester365/maester/issues
+    about: Report issues with the module here

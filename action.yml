@@ -1,0 +1,188 @@
+name: "Maester Action"
+description: "Monitor your Microsoft 365 tenant's security configuration using Maester, THE PowerShell-based test automation framework."
+branding:
+  icon: "check-circle"
+  color: "red"
+inputs:
+  tenant_id:
+    description: "Entra ID Tenant ID"
+    required: true
+  client_id:
+    description: "App Registration Client ID"
+    required: true
+  include_public_tests:
+    description: "Include public test repository 'maester365/maester-tests' as well as private tests in the test run"
+    required: false
+    default: "true"
+  include_private_tests:
+    description: "Checkout the current repository for private tests. Disable this if you want to run the public tests only."
+    required: false
+    default: "true"
+  include_exchange:
+    type: boolean
+    description: "Include Exchange Online tests in the test run."
+    required: false
+    default: false
+  include_teams:
+    type: boolean
+    description: "Include Teams tests in the test run."
+    required: false
+    default: true
+  include_tags:
+    description: "A list of tags to include in the test run. Please separate multiple tags with a comma (without space)."
+    required: false
+    default: ""
+  exclude_tags:
+    description: "A list of tags to exclude from the test run. Please separate multiple tags with a comma (without space)."
+    required: false
+    default: ""
+
+  maester_version:
+    description: "The version of Maester PowerShell to use. latest (default), preview, or a specific version number."
+    required: false
+    default: "latest"
+  
+  public_tests_ref:
+    description: "The branch or tag of the public tests to use. If not specified, the default branch will be used."
+    required: false
+    default: ""
+
+  pester_verbosity:
+    description: "Pester verbosity level. Options: 'None', 'Normal', 'Detailed', 'Diagnostic'"
+    required: false
+    default: "None"
+  step_summary:
+    type: boolean
+    description: "Define whether a summary is outputted to GitHub Actions."
+    required: false
+    default: true
+  artifact_upload:
+    type: boolean
+    description: "Define whether the results are uploaded as Artifacts."
+    required: false
+    default: true
+
+  disable_telemetry:
+    type: boolean
+    description: "If set, telemetry information will not be logged."
+    required: false
+    default: false
+
+  mail_recipients:
+    description: "A list of email addresses to send the test results to. Please separate multiple email addresses with a comma."
+    required: false
+    default: ""
+  mail_userid:
+    description: "The user id of the sender of the mail. This is required since the action is using application permissions."
+    required: false
+    default: ""
+  mail_testresultsuri:
+    description: "Uri to the detailed test results page."
+    required: false
+    default: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  notification_teams_webhook:
+    description: "Webhook URL for sending test results to Teams."
+    required: false
+    default: ""
+  notification_teams_channel_id:
+    description: "The ID of the Teams channel to send the test results to."
+    required: false
+    default: ""
+  notification_teams_team_id:
+    description: "The ID of the Teams team to send the test results to."
+    required: false
+    default: ""
+
+outputs:
+  results_json:
+    description: "The file location of the JSON output of the test results."
+    value: ${{ steps.maester.outputs.results_json }}
+  tests_total:
+    description: "The total number of tests run."
+    value: ${{ steps.maester.outputs.tests_total }}
+  tests_passed:
+    description: "The number of tests that passed."
+    value: ${{ steps.maester.outputs.tests_passed }}
+  tests_failed:
+    description: "The number of tests that failed."
+    value: ${{ steps.maester.outputs.tests_failed }}
+  tests_skipped:
+    description: "The number of tests that were skipped."
+    value: ${{ steps.maester.outputs.tests_skipped }}
+  result:
+    description: "The result of the test run. 'Failed' if any tests failed, 'Passed' if all tests passed."
+    value: ${{ steps.maester.outputs.result }}
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: 🕑 Set current date as env variable
+      shell: bash
+      run: echo "NOW=$(date +'%Y-%m-%d-T%H%M%S')" >> $GITHUB_ENV
+    
+    - name: ❌ Log error message
+      if: ${{ inputs.include_public_tests != 'true' && inputs.include_private_tests != 'true' }}
+      run: |
+        echo "::error title=No tests to run::Please set 'include_public_tests' or 'include_private_tests' to 'true'."
+        exit 1
+      shell: bash
+
+    - name: 🧑‍💻 Public tests to subfolder
+      if: ${{ inputs.include_public_tests == 'true'}}
+      uses: actions/checkout@v4
+      with:
+        repository: maester365/maester-tests
+        path: public-tests
+        ref: ${{ inputs.public_tests_ref }}
+
+    - name: 🧑‍💻 Checkout latest private tests
+      if: ${{ inputs.include_private_tests == 'true' }}
+      uses: actions/checkout@v4
+
+    - name: ❌ Log error message
+      if: ${{ failure() }}
+      run: |
+        echo "::error title=Failed to checkout tests::Something went wrong. Please check the logs for more details."
+        exit 1
+      shell: bash
+
+    - name: 🔑 Sign in to Entra ID
+      uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.client_id }}
+        tenant-id: ${{ inputs.tenant_id }}
+        allow-no-subscriptions: true
+
+    - name: 🧪 Run Maester
+      id: maester
+      shell: pwsh
+      run: |
+        ${{ github.action_path }}\script\Run-MaesterAction.ps1 `
+          -TenantId '${{ inputs.tenant_id}}' `
+          -ClientId '${{ inputs.client_id }}' `
+          -Path '${{ github.workspace }}' `
+          -MaesterVersion '${{ inputs.maester_version }}' `
+          -IncludeExchange ('${{ inputs.include_exchange }}' -eq 'true') `
+          -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
+          -IncludeTags '${{ inputs.include_tags }}' `
+          -ExcludeTags '${{ inputs.exclude_tags }}' `
+          -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `
+          -PesterVerbosity '${{ inputs.pester_verbosity }}' `
+          -IsDebug ('${{runner.debug}}' -eq '1') `
+          -GitHubStepSummary ('${{ inputs.step_summary }}' -eq 'true') `
+          -MailRecipients '${{ inputs.mail_recipients }}' `
+          -MailUser '${{ inputs.mail_userid }}' `
+          -TestResultURI '${{ inputs.mail_testresultsuri }}' `
+          -TeamsWebhookUri '${{ inputs.notification_teams_webhook }}' `
+          -TeamsChannelId '${{ inputs.notification_teams_channel_id }}' `
+          -TeamsTeamId '${{ inputs.notification_teams_team_id }}'
+
+    - name: 📃 Archive Maester Html Report
+      uses: actions/upload-artifact@v4
+      if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload == 'true'
+      with:
+        name: maester-test-results-${{inputs.maester_version}}-${{ env.NOW }}
+        path: test-results
+        include-hidden-files: true
