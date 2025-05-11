@@ -128,22 +128,6 @@ BEGIN {
         $Path = Get-Location
         Write-Host "❔ No path provided. Using current directory $Path."
     }
-
-    # Fix Maester configuration file
-    $maesterConfigPath = Join-Path -Path $Path -ChildPath 'maester-config.json'
-    if (-not (Test-Path $maesterConfigPath)) {
-        $maesterConfigPathPublic = [IO.Path]::Combine($Path, 'public-tests', 'tests', 'maester-config.json')
-        if (Test-Path $maesterConfigPathPublic) {
-            Write-Host "📃 Using public-tests config: $maesterConfigPathPublic"
-            Copy-Item -Path $maesterConfigPathPublic -Destination $maesterConfigPath -Force
-        } else {
-            Write-Host "❌ Configuration $maesterConfigPathPublic not found will result in failure with version '1.0.71' or later"
-            if ($installedVersion -ge [version]'1.0.71') {
-                Write-Host "::error file=maester-config.json,title=Maester config not found::Configuration $maesterConfigPathPublic not found will result in failure with version '1.0.71-preview' or later"
-                exit 1
-            }
-        }
-    }
 }
 PROCESS {
     $graphToken = Get-MtAccessTokenUsingCli -ResourceUrl 'https://graph.microsoft.com' -AsSecureString
