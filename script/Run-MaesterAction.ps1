@@ -86,7 +86,7 @@ BEGIN {
     # If specified, install/update public-tests to the version in the current module
     if ($IncludePublicTests -eq $true) {
         $publicTestsPath = Join-Path -Path $Path -ChildPath 'public-tests'
-        Update-MtMaesterTests -Path $publicTestsPath -Force
+        Update-MaesterTests -Path $publicTestsPath -Force
     }
 
     # if command Get-MtAccessTokenUsingCli is not found, import the file with dot-sourcing
