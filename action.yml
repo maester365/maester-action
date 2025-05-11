@@ -129,14 +129,6 @@ runs:
         exit 1
       shell: bash
 
-    - name: 🧑‍💻 Public tests to subfolder
-      if: ${{ inputs.include_public_tests == 'true'}}
-      uses: actions/checkout@v4
-      with:
-        repository: maester365/maester-tests
-        path: public-tests
-        ref: ${{ inputs.public_tests_ref }}
-
     - name: 🧑‍💻 Checkout latest private tests
       if: ${{ inputs.include_private_tests == 'true' }}
       uses: actions/checkout@v4
@@ -164,6 +156,7 @@ runs:
           -ClientId '${{ inputs.client_id }}' `
           -Path '${{ github.workspace }}' `
           -MaesterVersion '${{ inputs.maester_version }}' `
+          -IncludePublicTests('${{ inputs.include_public_tests }}' -eq 'true') `
           -IncludeExchange ('${{ inputs.include_exchange }}' -eq 'true') `
           -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
           -IncludeTags '${{ inputs.include_tags }}' `
