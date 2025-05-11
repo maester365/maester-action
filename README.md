@@ -4,7 +4,7 @@
 
 Monitor your Microsoft 365 tenant's security configuration using **Maester**, the PowerShell-based test automation framework.
 
-Check out the [Maester documentation](https://maester.dev/docs/) for more information on how to use Maester, or the [github action documentation](https://maester.dev/docs/monitoring/github) for more details on how to use the action.
+Check out the [Maester documentation](https://maester.dev/) for more information on how to use Maester, or the [github action documentation](https://maester.dev/docs/monitoring/github) for more details on how to use the action.
 
 > [!NOTE]
 > This github action only supports [workload identity federation](https://maester.dev/docs/monitoring/github#set-up-the-github-actions-workflow) for authentication, since that is the recommended way to authenticate to Microsoft 365 services from Github Actions.
