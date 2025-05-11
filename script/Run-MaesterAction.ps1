@@ -8,6 +8,9 @@ param (
     [Parameter(Mandatory = $true, HelpMessage = 'The path for the files and pester tests')]
     [string]$Path,
 
+    [Parameter(Mandatory = $false, HelpMessage = 'If true, auto-update tests in public-tests to the version in the current module')]
+    [bool]$IncludePublicTests = $true,
+
     [Parameter(Mandatory = $false, HelpMessage = 'The Pester verbosity level')]
     [ValidateSet('None', 'Normal', 'Detailed', 'Diagnostic')]
     [string]$PesterVerbosity = 'None',
@@ -80,6 +83,12 @@ BEGIN {
     $installedVersion = $installedModule | Select-Object -ExpandProperty Version
     Write-Host "📃 Installed Maester version: $installedVersion"
 
+    # If specified, install/update public-tests to the version in the current module
+    if ($IncludePublicTests -eq $true) {
+        $publicTestsPath = Join-Path -Path $Path -ChildPath 'public-tests'
+        Update-MtMaesterTests -Path $publicTestsPath -Force
+    }
+
     # if command Get-MtAccessTokenUsingCli is not found, import the file with dot-sourcing
     $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
     if (-not (Get-Command Get-MtAccessTokenUsingCli -ErrorAction SilentlyContinue)) {
@@ -103,9 +112,9 @@ BEGIN {
             . $markdownReportScript
         } else {
             Write-Host "❔ Better markdown report not loaded: $markdownReportScript"
-        }   
+        }
     }
-    
+
     # Check if $Path is set and if it is a valid path
     # if not replace it with the current directory
     if (-not [string]::IsNullOrWhiteSpace($Path)) {
@@ -234,7 +243,7 @@ PROCESS {
         Write-Debug "Debug mode is enabled. Parameters: $($MaesterParameters | Out-String)"
     }
 
-    
+
     # Check all parameters against the installed Maester version and remove the ones that are not supported
     # A warning to show which parameters are not supported seems better then not executing any tests at all
     $maesterCommand = Get-Command -Name Invoke-Maester
@@ -280,8 +289,8 @@ PROCESS {
             Write-Host "::error file=$($_.InvocationInfo.ScriptName),line=$($_.InvocationInfo.Line),title=Maester exception::Failed to write test result location to output variable."
         }
     }
-  
-    
+
+
     # Replace test results markdown file with the new one
     # Check if the 'Get-MtMarkdownReportAction' function is available, this is an improved version to fix all reports under version 1.0.79-preview
     if (Get-Command Get-MtMarkdownReportAction -ErrorAction SilentlyContinue) {
@@ -302,25 +311,25 @@ PROCESS {
         if (Test-Path $filePath) {
             $maxSize = 1024KB
             $truncationMsg = "`n`n**⚠ TRUNCATED: Output exceeded GitHub's 1024 KB limit.**"
-        
+
             # Check file size
             $fileSize = (Get-Item $filePath).Length
             if ($fileSize -gt $maxSize) {
                 Write-Host "❌ Truncating output file to prevent failure."
-        
+
                 # Read the file content
                 $content = Get-Content $filePath -Raw
-        
+
                 # Calculate the maximum content size to fit within the limit
                 $maxContentSize = $maxSize - ($truncationMsg.Length * [System.Text.Encoding]::UTF8.GetByteCount("a")) - 4KB
-        
+
                 # Truncate the content
                 $truncatedContent = $content.Substring(0, $maxContentSize / [System.Text.Encoding]::UTF8.GetByteCount("a"))
-        
+
                 # Write the truncated content and truncation message to the new file
                 $truncatedContent | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding UTF8 -Append
                 Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $truncationMsg
-        
+
             } else {
                 Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $(Get-Content $filePath)
             }
