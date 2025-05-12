@@ -90,10 +90,10 @@ jobs:
           include_public_tests: true
           include_private_tests: false
           include_exchange: false
-          include_teams: true
+          include_teams: false
           # Set a specific version of the powershell module here or 'latest' or 'preview'
           # check out https://www.powershellgallery.com/packages/Maester/
-          maester_version: preview
+          maester_version: latest
           disable_telemetry: false
           step_summary: true
 
