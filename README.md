@@ -20,28 +20,27 @@ Check out the [Maester documentation](https://maester.dev/) for more information
 
 ## 📦 Inputs
 
-| Name                          | Description                                                                                     | Required | Default                     |
-|-------------------------------|-------------------------------------------------------------------------------------------------|----------|-----------------------------|
-| `tenant_id`                   | Entra ID Tenant ID.                                                                             | ✅       |                             |
+| Name                          | Description                                                                                    | Required | Default                     |
+|-------------------------------|------------------------------------------------------------------------------------------------|----------|-----------------------------|
+| `tenant_id`                   | Entra ID Tenant ID.                                                                            | ✅       |                             |
 | `client_id`                   | App Registration Client ID.                                                                    | ✅       |                             |
-| `include_public_tests`        | Include public test repository `maester365/maester-tests` in the test run.                     | ❌       | `true`                      |
-| `public_tests_ref`            | The branch or tag of the public tests to use.                                                  | ❌       |                             |
+| `include_public_tests`        | Install public tests from module                                                               | ❌       | `true`                      |
 | `include_private_tests`       | Include private tests from the current repository.                                             | ❌       | `true`                      |
 | `include_exchange`            | Include Exchange Online tests in the test run.                                                 | ❌       | `false`                     |
 | `include_teams`               | Include Teams tests in the test run.                                                           | ❌       | `true`                      |
 | `include_tags`                | A list of tags to include in the test run (comma-separated).                                   | ❌       |                             |
 | `exclude_tags`                | A list of tags to exclude from the test run (comma-separated).                                 | ❌       |                             |
 | `maester_version`             | The version of Maester PowerShell to use (`latest`, `preview`, or specific version).           | ❌       | `latest`                    |
-| `pester_verbosity`            | Pester verbosity level (`None`, `Normal`, `Detailed`, `Diagnostic`).                          | ❌       | `None`                      |
+| `pester_verbosity`            | Pester verbosity level (`None`, `Normal`, `Detailed`, `Diagnostic`).                           | ❌       | `None`                      |
 | `step_summary`                | Output a summary to GitHub Actions.                                                            | ❌       | `true`                      |
 | `artifact_upload`             | Upload test results as GitHub Action artifacts.                                                | ❌       | `true`                      |
 | `disable_telemetry`           | Disable telemetry logging.                                                                     | ❌       | `false`                     |
-| `mail_recipients`             | A list of email addresses to send the test results to (comma-separated).                      | ❌       |                             |
+| `mail_recipients`             | A list of email addresses to send the test results to (comma-separated).                       | ❌       |                             |
 | `mail_userid`                 | The user ID of the sender of the email.                                                        | ❌       |                             |
 | `mail_testresultsuri`         | URI to the detailed test results page.                                                         | ❌       | `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}` |
 | `notification_teams_webhook`  | Webhook URL for sending test results to Teams.                                                 | ❌       |                             |
-| `notification_teams_channel_id` | The ID of the Teams channel to send the test results to.                                      | ❌       |                             |
-| `notification_teams_team_id`  | The ID of the Teams team to send the test results to.                                           | ❌       |                             |
+| `notification_teams_channel_id` | The ID of the Teams channel to send the test results to.                                     | ❌       |                             |
+| `notification_teams_team_id`  | The ID of the Teams team to send the test results to.                                          | ❌       |                             |
 
 ## 📤 Outputs
 

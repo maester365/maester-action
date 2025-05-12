@@ -32,6 +32,7 @@ jobs:
     steps:
       - name: Check preconditions 📃
         id: preconditions
+        shell: bash
         run: |
           if [ "${{ secrets.AZURE_CLIENT_ID }}" == "" ]; then
             echo "::error title=Missing secret::AZURE_CLIENT_ID is not set."
@@ -63,7 +64,6 @@ jobs:
           step_summary: ${{ matrix.maester == 'preview'}}
           artifact_upload: true
           maester_version: ${{ matrix.maester }}
-          public_tests_ref: main
           disable_telemetry: true
           notification_teams_webhook: https://webhook.site/6349a4fa-9f43-4224-9e37-a3f5117514d6
       

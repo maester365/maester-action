@@ -41,11 +41,6 @@ inputs:
     description: "The version of Maester PowerShell to use. latest (default), preview, or a specific version number."
     required: false
     default: "latest"
-  
-  public_tests_ref:
-    description: "The branch or tag of the public tests to use. If not specified, the default branch will be used."
-    required: false
-    default: ""
 
   pester_verbosity:
     description: "Pester verbosity level. Options: 'None', 'Normal', 'Detailed', 'Diagnostic'"
