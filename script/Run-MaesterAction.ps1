@@ -174,6 +174,7 @@ PROCESS {
         OutputFolder         = 'test-results'
         OutputFolderFileName = 'test-results'
         PassThru             = $true
+        NonInteractive       = $true
     }
 
     # Check if test tags are provided
