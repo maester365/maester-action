@@ -3,7 +3,6 @@ description: Report issues with the Maester Github Action here.
 title: "[BUG] "
 labels: [bug]
 body:
-body:
 - type: checkboxes
   attributes:
     label: Is there an existing issue for this?
@@ -23,16 +22,10 @@ body:
   id: maester_version
   attributes:
     label: What version of Maester are you using?
-    description: "Please provide the version of Maester you are using, it is in the logs as: Installed Maester version: 1.0.83"
-    placeholder: 1.0.0 / 1.0.83
+    description: "Please provide the version of Maester you are using, it is in the logs as: Installed Maester version: 1.0.86"
+    placeholder: 1.0.0 / 1.0.86
   validations:
     required: true
-- type: input
-  id: public_tests_version
-  attributes:
-    label: What version of public tests are you using?
-    description: It is possible to use a different git reference for the public tests. Which one are you using?
-    placeholder: main
 - type: textarea
   id: issue_description
   attributes:
