@@ -21,7 +21,7 @@ permissions:
   checks: write
 
 jobs:
-  test-matix:
+  test-matrix:
     strategy:
       matrix:
         maester: ["latest", "preview"]
