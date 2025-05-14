@@ -16,7 +16,7 @@ function Get-MtMarkdownReportAction {
     param(
         # The Maester test results returned from `Invoke-Pester -PassThru | ConvertTo-MtMaesterResult`
         [Parameter(Mandatory = $true, Position = 0)]
-        [psobject] $MaesterResults,
+        [PSObject] $MaesterResults,
 
         [Parameter(Mandatory = $false, Position = 1)]
         [string] $TemplateFile = [IO.Path]::Combine($PSScriptRoot, '..', 'assets', 'ReportTemplate.md')
@@ -95,7 +95,7 @@ function Get-MtMarkdownReportAction {
     $textSummary = GetTestSummary
     $textDetails = GetTestDetails
 
-    $templateMarkdown = $templateMarkdown -replace '%TenandId%', $MaesterResults.TenantId
+    $templateMarkdown = $templateMarkdown -replace '%TenantId%', $MaesterResults.TenantId
     $templateMarkdown = $templateMarkdown -replace '%TenantName%', $MaesterResults.TenantName
     $templateMarkdown = $templateMarkdown -replace '%TenantName%', $MaesterResults.TenantVersion
     $templateMarkdown = $templateMarkdown -replace '%ModuleVersion%', $MaesterResults.CurrentVersion
