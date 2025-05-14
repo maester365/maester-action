@@ -1,4 +1,4 @@
-param (
+﻿param (
     [Parameter(Mandatory = $true, HelpMessage = 'The Entra Tenant Id')]
     [string]$TenantId,
 

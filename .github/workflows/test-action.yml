@@ -25,7 +25,6 @@ jobs:
     strategy:
       matrix:
         maester: ["latest", "preview"]
-    #continue-on-error: ${{ matrix.maester == 'preview' }}
     name: "Maester 🔥 ${{ matrix.maester }}"
     runs-on: ubuntu-latest
 
@@ -65,7 +64,6 @@ jobs:
           artifact_upload: true
           maester_version: ${{ matrix.maester }}
           disable_telemetry: true
-          notification_teams_webhook: https://webhook.site/6349a4fa-9f43-4224-9e37-a3f5117514d6
       
       - name: Output results 📃
         if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
@@ -76,4 +74,34 @@ jobs:
           echo "Failed tests: ${{ steps.maester.outputs.tests_failed }}"
           echo "Skipped tests: ${{ steps.maester.outputs.tests_skipped }}"
 
- 
+  validate-scripts:
+    name: "Analyze scripts 👮"
+    runs-on: ubuntu-latest
+    steps:
+      - name: ✅ Checkout action
+        uses: actions/checkout@v4
+
+      - name: 📃 Run script analyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path .\script\ -ExcludeRule PSAvoidUsingWriteHost
+          if ($results.Count -eq 0) {
+            Write-Host "✅ No issues found."
+            $summary = "## ScriptAnalyzer Results ✅`n`nNo issues found."
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+            Write-Host "Summary written to GITHUB_STEP_SUMMARY."
+            exit 0
+          } else {
+            Write-Host "💣 Issues found"
+            $summary = "## ScriptAnalyzer Results ⚠️`n`nNumber of issues: $($results.Count)`n`n"
+            $summary += "| File | Rule | Message |`n"
+            $summary += "| ---- | ---- | ------- |`n"
+            foreach ($result in $results) {
+                $summary += "| ``script/$($result.ScriptName)`` L$($result.Line) | $($result.RuleName) | $($result.Message) |`n"
+                Write-Host "::warning file=script/$($result.ScriptName),line=$($result.Line),col=$($result.Column),title=$($result.RuleName)::$($result.Message)"
+            }
+            $summary += "`n"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+            Write-Host "Summary written to GITHUB_STEP_SUMMARY."
+            exit $results.Count
+          }
