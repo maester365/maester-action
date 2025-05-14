@@ -76,4 +76,41 @@ jobs:
           echo "Failed tests: ${{ steps.maester.outputs.tests_failed }}"
           echo "Skipped tests: ${{ steps.maester.outputs.tests_skipped }}"
 
- 
+  validate-scripts:
+    name: "👮 Analyze scripts"
+    runs-on: ubuntu-latest
+    steps:
+      - name: ✅ Checkout action
+        uses: actions/checkout@v4
+
+      - name: 📦 Install script analyzer
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: 📃 Run script analyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path .\script\
+          $results = Invoke-ScriptAnalyzer -Path .\script\
+          if ($results.Count -eq 0) {
+            Write-Host "✅ No issues found."
+            $summary = "## ScriptAnalyzer Results ✅`n`n"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+            Write-Host "Summary written to GITHUB_STEP_SUMMARY."
+            exit 0
+          } else {
+            Write-Host "💣 Issues found"
+            $summary = "## ScriptAnalyzer Results ⚠️`n`n"
+
+            $summary += "| File | Rule | Message |`n"
+            $summary += "| ---- | ---- | ------- |`n"
+            foreach ($result in $results) {
+                $summary += "| ``script/$($result.ScriptName)`` L$($result.Line) | $($result.RuleName) | $($result.Message) |`n"
+                Write-Host "::warning file=script/$($result.ScriptName),line=$($result.Line),col=$($result.Column),title=$($result.RuleName)::$($result.Message)"
+            }
+            $summary += "`n"
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+            Write-Host "Summary written to GITHUB_STEP_SUMMARY."
+            exit $results.Count
+          }
