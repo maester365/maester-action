@@ -1,0 +1,42 @@
+name: 🤖 Create major tag
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+    paths:
+      - '.github/workflows/copy-tags.yml'
+      - 'action.yml'
+      - 'script/**'
+
+permissions:
+  contents: write
+
+jobs:
+  copy-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧑‍💻 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+
+      - name: ✅ Create major tag
+        id: create-major-tag
+        run: |
+          # Extract the major version from the tag
+          MAJOR_VERSION=$(echo "${GITHUB_REF##*/}" | cut -d '.' -f 1)
+
+          # Create a new tag with the major version
+          git tag -fa "${MAJOR_VERSION}" -m "Tagging major version ${MAJOR_VERSION}"
+          # Push the new (or updated) tag to the repository
+          git push -f origin "${MAJOR_VERSION}"
+          echo "new_tag=${MAJOR_VERSION}" >> $GITHUB_OUTPUT
+      
+      - name: 📝 Write summary
+        run: |
+          echo "## Created or updated major tag" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag: \`${{ steps.create-major-tag.outputs.new_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: \`${{ github.repository }}\`" >> $GITHUB_STEP_SUMMARY
