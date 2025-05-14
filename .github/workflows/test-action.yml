@@ -25,7 +25,6 @@ jobs:
     strategy:
       matrix:
         maester: ["latest", "preview"]
-    #continue-on-error: ${{ matrix.maester == 'preview' }}
     name: "Maester 🔥 ${{ matrix.maester }}"
     runs-on: ubuntu-latest
 
@@ -82,15 +81,9 @@ jobs:
       - name: ✅ Checkout action
         uses: actions/checkout@v4
 
-      - name: 📦 Install script analyzer
-        shell: pwsh
-        run: |
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-
       - name: 📃 Run script analyzer
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path .\script\
           $results = Invoke-ScriptAnalyzer -Path .\script\ -ExcludeRule PSAvoidUsingWriteHost
           if ($results.Count -eq 0) {
             Write-Host "✅ No issues found."

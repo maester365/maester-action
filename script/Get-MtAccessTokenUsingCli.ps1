@@ -27,7 +27,7 @@ This function requires the Azure CLI to be installed and authenticated with the 
 
 function Get-MtAccessTokenUsingCli {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression','', Scope='Function', Justification='Getting a token from the Azure CLI is the whole point of this function', Target='Get-MtAccessTokenUsingCli')]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText','', Justification='How do we fix this issue? Some modules require a secure string', Scope='Function', Target='Get-MtAccessTokenUsingCli')]
+    # [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText','', Justification='Some modules require a SecureString, there is no other way to do this. According to GitHub Copilot', Scope='Function', Target='Get-MtAccessTokenUsingCli')]
     [OutputType([string], [SecureString])]
     [CmdletBinding()]
     param (
@@ -46,6 +46,7 @@ function Get-MtAccessTokenUsingCli {
     try {
         $accessToken = Invoke-Expression -Command $command
         if ($AsSecureString) {
+            # This only wraps the string in a secure string, but it is still available in memory. So not really secure.
             $accessToken = ConvertTo-SecureString -String $accessToken -AsPlainText -Force
         }
         return $accessToken
