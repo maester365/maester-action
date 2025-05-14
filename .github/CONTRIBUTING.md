@@ -20,7 +20,7 @@ Before contributing to this action, make sure you familiarize yourself with the 
 
 This action is a composite action that runs Maester, it executes all the steps needed to authenticate, get the custom tests, and then call the `script/Run-MaesterAction.ps1` PowerShell script, with all the needed inputs from the workflow.
 
-1. Log error is the wrong combination of inputs is provided.
+1. Log an error when an invalid combination of inputs is provided.
 1. Checkout the custom tests from the repository.
 1. Call `azure/login@v2` to authenticate with Azure using Azure CLI.
 1. Run the `script/Run-MaesterAction.ps1` PowerShell script with all the inputs provided in the workflow.
