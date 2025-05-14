@@ -26,7 +26,7 @@ jobs:
       matrix:
         maester: ["latest", "preview"]
     #continue-on-error: ${{ matrix.maester == 'preview' }}
-    name: "🔥 Maester ${{ matrix.maester }}"
+    name: "Maester 🔥 ${{ matrix.maester }}"
     runs-on: ubuntu-latest
 
     steps:
@@ -76,7 +76,7 @@ jobs:
           echo "Skipped tests: ${{ steps.maester.outputs.tests_skipped }}"
 
   validate-scripts:
-    name: "👮 Analyze scripts"
+    name: "Analyze scripts 👮"
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Checkout action
