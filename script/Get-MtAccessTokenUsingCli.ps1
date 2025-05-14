@@ -26,8 +26,8 @@ This function requires the Azure CLI to be installed and authenticated with the 
 #>
 
 function Get-MtAccessTokenUsingCli {
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression', Scope='Function', Justification='Getting a token from the Azure CLI is the whole point of this function', Target='Get-MtAccessTokenUsingCli')]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', Justification='How do we fix this issue? Some modules require a secure string', Scope='Function', Target='Get-MtAccessTokenUsingCli')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingInvokeExpression','', Scope='Function', Justification='Getting a token from the Azure CLI is the whole point of this function', Target='Get-MtAccessTokenUsingCli')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText','', Justification='How do we fix this issue? Some modules require a secure string', Scope='Function', Target='Get-MtAccessTokenUsingCli')]
     [OutputType([string], [SecureString])]
     [CmdletBinding()]
     param (
