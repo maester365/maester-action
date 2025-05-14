@@ -77,7 +77,7 @@ jobs:
           echo "Skipped tests: ${{ steps.maester.outputs.tests_skipped }}"
 
   validate-scripts:
-    name: "👮 Analyze scripts"
+    name: "Analyze scripts 👮"
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Checkout action
@@ -92,7 +92,7 @@ jobs:
         shell: pwsh
         run: |
           $results = Invoke-ScriptAnalyzer -Path .\script\
-          $results = Invoke-ScriptAnalyzer -Path .\script\
+          $results = Invoke-ScriptAnalyzer -Path .\script\ -ExcludeRule PSAvoidUsingWriteHost
           if ($results.Count -eq 0) {
             Write-Host "✅ No issues found."
             $summary = "## ScriptAnalyzer Results ✅`n`n"

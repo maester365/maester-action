@@ -1,5 +1,4 @@
-﻿[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'We explicitly write to the host to get the logs in the GitHub action logs')]
-param (
+﻿param (
     [Parameter(Mandatory = $true, HelpMessage = 'The Entra Tenant Id')]
     [string]$TenantId,
 
