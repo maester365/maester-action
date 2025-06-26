@@ -201,7 +201,7 @@ PROCESS {
 
     # Check if mail recipients and mail userid are provided
     if ( [string]::IsNullOrWhiteSpace($MailUser) -eq $false ) {
-        if ( [string]::IsNullOrWhiteSpace( '${{ inputs.mail_recipients }}' ) -eq $false ) {
+        if ( [string]::IsNullOrWhiteSpace( $MailRecipients ) -eq $false ) {
             # Add mail parameters
             $MaesterParameters.Add( 'MailUserId', $MailUser )
             $Recipients = $MailRecipients -split ','
