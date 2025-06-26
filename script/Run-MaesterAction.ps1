@@ -64,8 +64,9 @@
 BEGIN {
     Write-Host "🔥 Maester Github Action 🔥 requested module: $MaesterVersion"
 
-     if($verbose) {
-        $VerbosePreference = "continue" 
+     if($VerboseLogging) {
+        $VerbosePreference = "continue"
+        Write-Verbose "Verbose logging enabled because the runner is running in debug mode!" 
     }
 
     # Install Maester
