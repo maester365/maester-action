@@ -146,7 +146,7 @@ runs:
       id: maester
       shell: pwsh
       run: |
-        ${{ github.action_path }}\script\Run-MaesterAction.ps1 `
+        ${{ github.action_path }}/script/Run-MaesterAction.ps1 `
           -TenantId '${{ inputs.tenant_id}}' `
           -ClientId '${{ inputs.client_id }}' `
           -Path '${{ github.workspace }}' `
