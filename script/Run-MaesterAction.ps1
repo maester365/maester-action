@@ -57,16 +57,16 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Teams notification teams ID')]
     [string]$TeamsTeamId = $null,
 
-    [Parameter(Mandatory = $false, HelpMessage = 'Verbose logging')]
-    [string]$VerboseLogging = $false
+    [Parameter(Mandatory = $false, HelpMessage = 'Debug logging')]
+    [string]$DebugLogging = $false
 )
 
 BEGIN {
     Write-Host "🔥 Maester Github Action 🔥 requested module: $MaesterVersion"
 
-     if($VerboseLogging) {
-        $VerbosePreference = "continue"
-        Write-Verbose "Verbose logging enabled because the runner is running in debug mode!" 
+     if($DebugLogging) {
+        $DebugPreference = 'Continue'
+        Write-Verbose "Debug logging enabled because the runner is running in debug mode!" 
     }
 
     # Install Maester
