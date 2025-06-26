@@ -166,8 +166,6 @@ runs:
           -TeamsWebhookUri '${{ inputs.notification_teams_webhook }}' `
           -TeamsChannelId '${{ inputs.notification_teams_channel_id }}' `
           -TeamsTeamId '${{ inputs.notification_teams_team_id }}'
-          -DebugLogging ${{ runner.debug == 1 }}
-
     - name: 📃 Archive Maester Html Report
       uses: actions/upload-artifact@v4
       if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload == 'true'

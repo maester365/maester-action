@@ -55,16 +55,14 @@
     [string]$TeamsChannelId = $null,
 
     [Parameter(Mandatory = $false, HelpMessage = 'Teams notification teams ID')]
-    [string]$TeamsTeamId = $null,
-
-    [Parameter(Mandatory = $false, HelpMessage = 'Debug logging')]
-    [string]$DebugLogging = $false
+    [string]$TeamsTeamId = $null
 )
 
 BEGIN {
     Write-Host "🔥 Maester Github Action 🔥 requested module: $MaesterVersion"
 
-     if($DebugLogging) {
+    $oldPreference = $DebugPreference
+     if($IsDebug) {
         $DebugPreference = 'Continue'
         Write-Verbose "Debug logging enabled because the runner is running in debug mode!" 
     }
@@ -333,6 +331,11 @@ PROCESS {
 
 }
 END {
+     if($IsDebug) {
+        $DebugPreference = $oldPreference
+        Write-Verbose "Setting log preference!" 
+    }
+
     Write-Host '🏁 Maester tests completed!'
     exit 0
     return
