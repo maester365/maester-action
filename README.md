@@ -75,8 +75,14 @@ on:
   # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+permissions:
+      id-token: write
+      contents: read
+      checks: write
+
 jobs:
   test:
+    name: Run Maester Test Job
     runs-on: ubuntu-latest
 
     steps:
