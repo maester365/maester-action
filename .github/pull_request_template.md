@@ -18,4 +18,4 @@ We will try to review your pull request as soon as possible.
 
 <!-- While your wait for a review, why not try to spread some Maester love on social media? -->
 
-💔Thank you!
+💖 Thank you!
