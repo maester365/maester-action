@@ -33,6 +33,9 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Include Exchange Online tests')]
     [bool]$IncludeExchange = $true,
 
+    [Parameter(Mandatory = $false, HelpMessage = 'Include Purview tests')]
+    [bool]$IncludePurview = $false,
+
     [Parameter(Mandatory = $false, HelpMessage = 'Include Teams tests')]
     [bool]$IncludeTeams = $true,
 
@@ -136,16 +139,31 @@ PROCESS {
     Connect-MgGraph -AccessToken $graphToken -NoWelcome
     Write-Host "✔️ Graph connected"
 
-    # Check if we need to connect to Exchange Online
-    if ($IncludeExchange) {
+    # Check if we need to connect to Exchange Online or Purview
+    if ($IncludeExchange -or $IncludePurview) {
         Install-Module ExchangeOnlineManagement -Force
         Import-Module ExchangeOnlineManagement
 
         $outlookToken = Get-MtAccessTokenUsingCli -ResourceUrl 'https://outlook.office365.com'
-        Connect-ExchangeOnline -AccessToken $outlookToken -AppId $ClientId -Organization $TenantId -ShowBanner:$false
-        Write-Host "✔️ Exchange Online connected."
-    } else {
-        Write-Host '📃 Exchange Online tests will be skipped.'
+
+        # Check if we need to connect to Exchange Online
+        if ($IncludeExchange) {
+            Connect-ExchangeOnline -AccessToken $outlookToken -AppId $ClientId -Organization $TenantId -ShowBanner:$false
+            Write-Host "✔️ Exchange Online connected."
+        } else {
+            Write-Host '📃 Exchange Online tests will be skipped.'
+        }
+
+        # Check if we need to connect to Purview
+        if ($IncludePurview) {
+            $domains = Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/v1.0/domains?`$select=id,isDefault"
+            $primaryDomain = $domains.value | Where-Object { $_.isDefault -eq $true } | Select-Object -ExpandProperty id
+
+            Connect-IPPSSession -AccessToken $outlookToken -Organization $primaryDomain -ShowBanner:$false
+            Write-Host "✔️ Purview connected."
+        } else {
+            Write-Host '📃 Purview tests will be skipped.'
+        }
     }
 
     # Check if we need to connect to Teams
@@ -157,7 +175,7 @@ PROCESS {
 
         $regularGraphToken = ConvertFrom-SecureString -SecureString $graphToken -AsPlainText
         $tokens = @($regularGraphToken, $teamsToken)
-        Connect-MicrosoftTeams -AccessTokens $tokens -Verbose
+        Connect-MicrosoftTeams -AccessTokens $tokens
         Write-Host "✔️ Microsoft Teams connected."
     } else {
         Write-Host '📃 Teams tests will be skipped.'

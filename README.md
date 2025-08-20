@@ -27,6 +27,7 @@ Check out the [Maester documentation](https://maester.dev/) for more information
 | `include_public_tests`        | Install public tests from module                                                               | ❌       | `true`                      |
 | `include_private_tests`       | Include private tests from the current repository.                                             | ❌       | `true`                      |
 | `include_exchange`            | Include Exchange Online tests in the test run.                                                 | ❌       | `false`                     |
+| `include_purview`             | Include Purview tests in the test run.                                                         | ❌       | `false`                     |
 | `include_teams`               | Include Teams tests in the test run.                                                           | ❌       | `true`                      |
 | `include_tags`                | A list of tags to include in the test run (comma-separated).                                   | ❌       |                             |
 | `exclude_tags`                | A list of tags to exclude from the test run (comma-separated).                                 | ❌       |                             |
@@ -96,6 +97,7 @@ jobs:
           include_public_tests: true
           include_private_tests: false
           include_exchange: false
+          include_purview: false
           include_teams: false
           # Set a specific version of the powershell module here or 'latest' or 'preview'
           # check out https://www.powershellgallery.com/packages/Maester/
