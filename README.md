@@ -90,6 +90,7 @@ jobs:
       - name: Run Maester 🔥
         id: maester
         # Set the action version to a specific version, to keep using that exact version.
+        # Or even better set it to a specific commit SHA to be sure nothing breaks unexpectedly.
         uses: maester365/maester-action@main
         with:
           tenant_id: ${{ secrets.AZURE_TENANT_ID }}

@@ -131,7 +131,7 @@ runs:
 
     - name: 🧑‍💻 Checkout latest private tests
       if: ${{ inputs.include_private_tests == 'true' }}
-      uses: actions/checkout@v4
+      uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 #v4.3.0
 
     - name: ❌ Log error message
       if: ${{ failure() }}
@@ -141,7 +141,7 @@ runs:
       shell: bash
 
     - name: 🔑 Sign in to Entra ID
-      uses: azure/login@v2
+      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 #v2.3.0
       with:
         client-id: ${{ inputs.client_id }}
         tenant-id: ${{ inputs.tenant_id }}
@@ -174,7 +174,7 @@ runs:
           -TeamsTeamId '${{ inputs.notification_teams_team_id }}'
 
     - name: 📃 Archive Maester Html Report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
       if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload == 'true'
       with:
         name: maester-test-results-${{inputs.maester_version}}-${{ env.NOW }}
