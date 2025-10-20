@@ -244,8 +244,8 @@ PROCESS {
         $results = Invoke-Maester @MaesterParameters
         Write-Host "🕑 Maester tests executed $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     } catch {
-        Write-Error "Failed to run Maester tests. Please check the parameters. $($_.Exception.Message) at $($_.InvocationInfo.Line) in $($_.InvocationInfo.ScriptName)"
-        Write-Host "::error file=$($_.InvocationInfo.ScriptName),line=$($_.InvocationInfo.Line),title=Maester exception::Failed to run Maester tests. Please check the parameters."
+        Write-Error "Failed to run Maester tests. Please check the parameters. $($_.Exception.Message) at $($_.InvocationInfo.ScriptLineNumber) in $($_.InvocationInfo.ScriptName)"
+        Write-Host "::error file=$($_.InvocationInfo.ScriptName),line=$($_.InvocationInfo.ScriptLineNumber),title=Maester exception::Failed to run Maester tests. Please check the parameters."
         exit $LASTEXITCODE
         return
     }
