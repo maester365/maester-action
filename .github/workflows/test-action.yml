@@ -59,6 +59,7 @@ jobs:
           include_public_tests: true
           include_private_tests: false
           include_exchange: false
+          include_purview: false
           include_teams: false
           step_summary: ${{ matrix.maester == 'preview'}}
           artifact_upload: true

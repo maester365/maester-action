@@ -23,6 +23,11 @@ inputs:
     description: "Include Exchange Online tests in the test run."
     required: false
     default: false
+  include_purview:
+    type: boolean
+    description: "Include Purview tests in the test run."
+    required: false
+    default: false
   include_teams:
     type: boolean
     description: "Include Teams tests in the test run."
@@ -153,6 +158,7 @@ runs:
           -MaesterVersion '${{ inputs.maester_version }}' `
           -IncludePublicTests('${{ inputs.include_public_tests }}' -eq 'true') `
           -IncludeExchange ('${{ inputs.include_exchange }}' -eq 'true') `
+          -IncludePurview ('${{ inputs.include_purview }}' -eq 'true') `
           -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
           -IncludeTags '${{ inputs.include_tags }}' `
           -ExcludeTags '${{ inputs.exclude_tags }}' `
