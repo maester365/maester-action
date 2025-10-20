@@ -120,12 +120,12 @@ BEGIN {
     if (-not [string]::IsNullOrWhiteSpace($Path)) {
         if (-not (Test-Path $Path)) {
             Write-Host "The provided path does not exist: $Path. Using current directory."
-            $Path = Get-Location
+            $Path = (Get-Location).Path
         } else {
             Write-Host "📃 Using provided path: $Path"
         }
     } else {
-        $Path = Get-Location
+        $Path = (Get-Location).Path
         Write-Host "❔ No path provided. Using current directory $Path."
     }
 }
