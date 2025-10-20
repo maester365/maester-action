@@ -63,12 +63,12 @@ BEGIN {
 
     # Install Maester
     if ($MaesterVersion -eq "latest" -or $MaesterVersion -eq "") {
-        Install-Module Maester -Force
+        Install-Module Maester -Scope CurrentUser -Force
     } elseif ($MaesterVersion -eq "preview") {
-        Install-Module Maester -AllowPrerelease -Force
+        Install-Module Maester -Scope CurrentUser -AllowPrerelease -Force
     } else { # it is not empty and not latest or preview
         try {
-            Install-Module Maester -RequiredVersion $MaesterVersion -AllowPrerelease -Force
+            Install-Module Maester -Scope CurrentUser -RequiredVersion $MaesterVersion -AllowPrerelease -Force
         } catch {
             Write-Error "❌ Failed to install Maester version $MaesterVersion. Please check the version number."
             Write-Error $_.Exception.Message
@@ -79,7 +79,7 @@ BEGIN {
 
     # Get installed version of Maester
     Import-Module Maester -Force -ErrorAction SilentlyContinue
-    $installedModule = Get-Module Maester -ListAvailable | Where-Object { $_.Name -eq 'Maester' } | Select-Object -First 1
+    $installedModule = Get-Module -Name 'Maester' -ListAvailable | Sort-Object -Property Version -Descending | Select-Object -First 1
     $installedVersion = $installedModule | Select-Object -ExpandProperty Version
     Write-Host "📃 Installed Maester version: $installedVersion"
 
@@ -138,7 +138,7 @@ PROCESS {
 
     # Check if we need to connect to Exchange Online
     if ($IncludeExchange) {
-        Install-Module ExchangeOnlineManagement -Force
+        Install-Module ExchangeOnlineManagement -Scope CurrentUser -Force
         Import-Module ExchangeOnlineManagement
 
         $outlookToken = Get-MtAccessTokenUsingCli -ResourceUrl 'https://outlook.office365.com'
@@ -150,7 +150,7 @@ PROCESS {
 
     # Check if we need to connect to Teams
     if ($IncludeTeams) {
-        Install-Module MicrosoftTeams -Force
+        Install-Module MicrosoftTeams -Scope CurrentUser -Force
         Import-Module MicrosoftTeams
 
         $teamsToken = Get-MtAccessTokenUsingCli -ResourceUrl '48ac35b8-9aa8-4d74-927d-1f4a14a0b239'
