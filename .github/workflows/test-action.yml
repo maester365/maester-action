@@ -41,11 +41,11 @@ jobs:
             echo "::error title=Missing secret::AZURE_TENANT_ID is not set."
             echo "secret_missing=true" >> "$GITHUB_OUTPUT"
           fi
-      
+
       # It seems you need to checkout the code before you can use an action from the same repo
       - name: Load action ✅
         if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref }}
 
@@ -64,7 +64,7 @@ jobs:
           artifact_upload: true
           maester_version: ${{ matrix.maester }}
           disable_telemetry: true
-      
+
       - name: Output results 📃
         if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
         run: |
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Checkout action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 📃 Run script analyzer
         shell: pwsh
