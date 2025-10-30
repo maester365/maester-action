@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🧑‍💻 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
           fetch-tags: true
@@ -33,7 +33,7 @@ jobs:
           # Push the new (or updated) tag to the repository
           git push -f origin "${MAJOR_VERSION}"
           echo "new_tag=${MAJOR_VERSION}" >> $GITHUB_OUTPUT
-      
+
       - name: 📝 Write summary
         run: |
           echo "## Created or updated major tag" >> $GITHUB_STEP_SUMMARY
