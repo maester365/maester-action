@@ -9,7 +9,6 @@
 		}
 	},
 	"forwardPorts": [3000, 5173],
-	"postCreateCommand": "/bin/bash ./.devcontainer/postCreateCommand.sh",
 	"customizations": {
 		"vscode": {
 			"settings": {
