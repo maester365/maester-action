@@ -251,9 +251,9 @@ PROCESS {
     # A warning to show which parameters are not supported seems better then not executing any tests at all
     $maesterCommand = Get-Command -Name Invoke-Maester
     $missingParameters = $MaesterParameters.Keys | Where-Object { $_ -notin  $maesterCommand.Parameters.Keys }
-    if ($missingParameters) {
-        Write-Host "❌ Maester version: $($maesterCommand.Version) does not support $missingParameters parameters. Please check version compatibility."
-        $MaesterParameters.Remove($missingParameters)
+    foreach ($parameter in $missingParameters) {
+        Write-Host "❌ Maester version: $($maesterCommand.Version) does not support parameter '-$parameter'. Please check version compatibility."
+        $MaesterParameters.Remove($parameter)
     }
 
     try {
