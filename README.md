@@ -28,6 +28,8 @@ Check out the [Maester documentation](https://maester.dev/) for more information
 | `include_private_tests`       | Include private tests from the current repository.                                             | ❌       | `true`                      |
 | `include_exchange`            | Include Exchange Online tests in the test run.                                                 | ❌       | `false`                     |
 | `include_teams`               | Include Teams tests in the test run.                                                           | ❌       | `true`                      |
+| `include_longrunning_tests`   | Include long running tests.                                                                    | ❌       | `false`                     |
+| `include_preview_tests`       | Include preview tests.                                                                         | ❌       | `false`                     |
 | `include_tags`                | A list of tags to include in the test run (comma-separated).                                   | ❌       |                             |
 | `exclude_tags`                | A list of tags to exclude from the test run (comma-separated).                                 | ❌       |                             |
 | `maester_version`             | The version of Maester PowerShell to use (`latest`, `preview`, or specific version).           | ❌       | `latest`                    |

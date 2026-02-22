@@ -28,6 +28,14 @@ inputs:
     description: "Include Teams tests in the test run."
     required: false
     default: true
+  include_longrunning_tests:
+    description: "Include long running tests."
+    required: false
+    default: "false"
+  include_preview_tests:
+    description: "Include preview tests."
+    required: false
+    default: "false"
   include_tags:
     description: "A list of tags to include in the test run. Please separate multiple tags with a comma (without space)."
     required: false
@@ -154,6 +162,8 @@ runs:
           -IncludePublicTests('${{ inputs.include_public_tests }}' -eq 'true') `
           -IncludeExchange ('${{ inputs.include_exchange }}' -eq 'true') `
           -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
+          -IncludeLongRunning ('${{ inputs.include_longrunning_tests }}' -eq 'true') `
+          -IncludePreview ('${{ inputs.include_preview_tests }}' -eq 'true') `
           -IncludeTags '${{ inputs.include_tags }}' `
           -ExcludeTags '${{ inputs.exclude_tags }}' `
           -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `

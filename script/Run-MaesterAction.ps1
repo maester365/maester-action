@@ -36,6 +36,12 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Include Teams tests')]
     [bool]$IncludeTeams = $true,
 
+    [Parameter(Mandatory = $false, HelpMessage = 'Include long running tests')]
+    [bool]$IncludeLongRunning = $true,
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Include preview tests')]
+    [bool]$IncludePreview = $true,
+
     [Parameter(Mandatory = $false, HelpMessage = 'Maester version to install, options: latest, preview, or specific version')]
     [string]$MaesterVersion = '',
 
@@ -189,6 +195,18 @@ PROCESS {
         $ExcludeTestTags = $ExcludeTags -split ','
         $MaesterParameters.Add( 'ExcludeTag', $ExcludeTestTags )
         Write-Host "📃 Excluding tests with tags: $ExcludeTestTags"
+    }
+
+    # Check if long running tests are enabled
+    if ($IncludeLongRunning) {
+         $MaesterParameters.Add('IncludeLongRunning', $true)
+         Write-Host "📃 Including long running tests."
+    }
+
+    # Check if preview tests are enabled
+    if ($IncludePreview) {
+         $MaesterParameters.Add('IncludePreview', $true)
+         Write-Host "📃 Including preview tests."
     }
 
     # Check if mail recipients and mail userid are provided
