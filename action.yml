@@ -19,15 +19,13 @@ inputs:
     required: false
     default: "true"
   include_exchange:
-    type: boolean
     description: "Include Exchange Online tests in the test run."
     required: false
-    default: false
+    default: "false"
   include_teams:
-    type: boolean
     description: "Include Teams tests in the test run."
     required: false
-    default: true
+    default: "true"
   include_longrunning_tests:
     description: "Include long running tests."
     required: false
@@ -55,21 +53,18 @@ inputs:
     required: false
     default: "None"
   step_summary:
-    type: boolean
     description: "Define whether a summary is outputted to GitHub Actions."
     required: false
-    default: true
+    default: "true"
   artifact_upload:
-    type: boolean
     description: "Define whether the results are uploaded as Artifacts."
     required: false
-    default: true
+    default: "true"
 
   disable_telemetry:
-    type: boolean
     description: "If set, telemetry information will not be logged."
     required: false
-    default: false
+    default: "false"
 
   mail_recipients:
     description: "A list of email addresses to send the test results to. Please separate multiple email addresses with a comma."
