@@ -37,10 +37,10 @@
     [bool]$IncludeTeams = $true,
 
     [Parameter(Mandatory = $false, HelpMessage = 'Include long running tests')]
-    [bool]$IncludeLongRunning = $true,
+    [bool]$IncludeLongRunning = $false,
 
     [Parameter(Mandatory = $false, HelpMessage = 'Include preview tests')]
-    [bool]$IncludePreview = $true,
+    [bool]$IncludePreview = $false,
 
     [Parameter(Mandatory = $false, HelpMessage = 'Maester version to install, options: latest, preview, or specific version')]
     [string]$MaesterVersion = '',
