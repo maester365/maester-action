@@ -36,6 +36,12 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Include Teams tests')]
     [bool]$IncludeTeams = $true,
 
+    [Parameter(Mandatory = $false, HelpMessage = 'Include long running tests')]
+    [bool]$IncludeLongRunning = $false,
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Include preview tests')]
+    [bool]$IncludePreview = $false,
+
     [Parameter(Mandatory = $false, HelpMessage = 'Maester version to install, options: latest, preview, or specific version')]
     [string]$MaesterVersion = '',
 
@@ -191,6 +197,18 @@ PROCESS {
         Write-Host "📃 Excluding tests with tags: $ExcludeTestTags"
     }
 
+    # Check if long running tests are enabled
+    if ($IncludeLongRunning) {
+         $MaesterParameters.Add('IncludeLongRunning', $true)
+         Write-Host "📃 Including long running tests."
+    }
+
+    # Check if preview tests are enabled
+    if ($IncludePreview) {
+         $MaesterParameters.Add('IncludePreview', $true)
+         Write-Host "📃 Including preview tests."
+    }
+
     # Check if mail recipients and mail userid are provided
     if ( [string]::IsNullOrWhiteSpace($MailUser) -eq $false ) {
         if ( [string]::IsNullOrWhiteSpace( $MailRecipients ) -eq $false ) {
@@ -233,9 +251,9 @@ PROCESS {
     # A warning to show which parameters are not supported seems better then not executing any tests at all
     $maesterCommand = Get-Command -Name Invoke-Maester
     $missingParameters = $MaesterParameters.Keys | Where-Object { $_ -notin  $maesterCommand.Parameters.Keys }
-    if ($missingParameters) {
-        Write-Host "❌ Maester version: $($maesterCommand.Version) does not support $missingParameters parameters. Please check version compatibility."
-        $MaesterParameters.Remove($missingParameters)
+    foreach ($parameter in $missingParameters) {
+        Write-Host "❌ Maester version: $($maesterCommand.Version) does not support parameter '-$parameter'. Please check version compatibility."
+        $MaesterParameters.Remove($parameter)
     }
 
     try {
