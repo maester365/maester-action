@@ -19,15 +19,21 @@ inputs:
     required: false
     default: "true"
   include_exchange:
-    type: boolean
     description: "Include Exchange Online tests in the test run."
     required: false
-    default: false
+    default: "false"
   include_teams:
-    type: boolean
     description: "Include Teams tests in the test run."
     required: false
-    default: true
+    default: "true"
+  include_longrunning_tests:
+    description: "Include long running tests."
+    required: false
+    default: "false"
+  include_preview_tests:
+    description: "Include preview tests."
+    required: false
+    default: "false"
   include_tags:
     description: "A list of tags to include in the test run. Please separate multiple tags with a comma (without space)."
     required: false
@@ -47,21 +53,18 @@ inputs:
     required: false
     default: "None"
   step_summary:
-    type: boolean
     description: "Define whether a summary is outputted to GitHub Actions."
     required: false
-    default: true
+    default: "true"
   artifact_upload:
-    type: boolean
     description: "Define whether the results are uploaded as Artifacts."
     required: false
-    default: true
+    default: "true"
 
   disable_telemetry:
-    type: boolean
     description: "If set, telemetry information will not be logged."
     required: false
-    default: false
+    default: "false"
 
   mail_recipients:
     description: "A list of email addresses to send the test results to. Please separate multiple email addresses with a comma."
@@ -154,6 +157,8 @@ runs:
           -IncludePublicTests('${{ inputs.include_public_tests }}' -eq 'true') `
           -IncludeExchange ('${{ inputs.include_exchange }}' -eq 'true') `
           -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
+          -IncludeLongRunning ('${{ inputs.include_longrunning_tests }}' -eq 'true') `
+          -IncludePreview ('${{ inputs.include_preview_tests }}' -eq 'true') `
           -IncludeTags '${{ inputs.include_tags }}' `
           -ExcludeTags '${{ inputs.exclude_tags }}' `
           -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `
