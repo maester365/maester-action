@@ -45,7 +45,7 @@ jobs:
       # It seems you need to checkout the code before you can use an action from the same repo
       - name: Load action ✅
         if: ${{ steps.preconditions.outputs.secret_missing != 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
 
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Checkout action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 📃 Run script analyzer
         shell: pwsh
