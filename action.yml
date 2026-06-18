@@ -188,29 +188,13 @@ runs:
       id: maester-html-artifact
       if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload_html == 'true'
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+      env:
+        MAESTER_ARTIFACT_NAME: maester-report-${{ inputs.maester_version }}-${{ env.NOW }}.html
+        MAESTER_HTML_PATH: test-results/test-results.html
       with:
         script: |
-          const {execSync} = require('child_process');
-          const path = require('path');
-          const os = require('os');
-          const fs = require('fs');
-
-          // Install @actions/artifact in a temp directory so files are served
-          // as individual downloadable entries (not wrapped in a ZIP archive)
-          const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'maester-artifact-'));
-          execSync(`npm install --prefix ${tmpDir} @actions/artifact`, {stdio: 'pipe'});
-          const {DefaultArtifactClient} = require(path.join(tmpDir, 'node_modules', '@actions', 'artifact'));
-
-          const client = new DefaultArtifactClient();
-          const artifactName = 'maester-html-report-${{ inputs.maester_version }}-${{ env.NOW }}';
-          const {id} = await client.uploadArtifact(
-            artifactName,
-            ['test-results/test-results.html'],
-            'test-results'
-          );
-          core.info(`Uploaded HTML report as artifact id=${id}`);
-          const artifactUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${id}`;
-          core.setOutput('artifact-url', artifactUrl);
+          const upload = require(`${process.env.GITHUB_ACTION_PATH}/script/Upload-HtmlReportArtifact.js`);
+          await upload({ core });
 
     - name: 🔗 Add HTML report link to step summary
       if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && inputs.step_summary != 'false'
