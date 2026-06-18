@@ -60,6 +60,10 @@ inputs:
     description: "Define whether the results are uploaded as Artifacts."
     required: false
     default: "true"
+  artifact_upload_html:
+    description: "Upload the self-contained HTML report as a separate artifact and add a direct download link to the step summary."
+    required: false
+    default: "false"
 
   disable_telemetry:
     description: "If set, telemetry information will not be logged."
@@ -179,3 +183,39 @@ runs:
         name: maester-test-results-${{inputs.maester_version}}-${{ env.NOW }}
         path: test-results
         include-hidden-files: true
+
+    - name: 📊 Upload Maester HTML Report as separate artifact
+      id: maester-html-artifact
+      if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload_html == 'true'
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+      with:
+        script: |
+          const {execSync} = require('child_process');
+          const path = require('path');
+          const os = require('os');
+          const fs = require('fs');
+
+          // Install @actions/artifact in a temp directory so files are served
+          // as individual downloadable entries (not wrapped in a ZIP archive)
+          const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'maester-artifact-'));
+          execSync(`npm install --prefix ${tmpDir} @actions/artifact`, {stdio: 'pipe'});
+          const {DefaultArtifactClient} = require(path.join(tmpDir, 'node_modules', '@actions', 'artifact'));
+
+          const client = new DefaultArtifactClient();
+          const artifactName = 'maester-html-report-${{ inputs.maester_version }}-${{ env.NOW }}';
+          const {id} = await client.uploadArtifact(
+            artifactName,
+            ['test-results/test-results.html'],
+            'test-results'
+          );
+          core.info(`Uploaded HTML report as artifact id=${id}`);
+          const artifactUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${id}`;
+          core.setOutput('artifact-url', artifactUrl);
+
+    - name: 🔗 Add HTML report link to step summary
+      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && inputs.step_summary != 'false'
+      shell: bash
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 HTML Report" >> $GITHUB_STEP_SUMMARY
+        echo "[Open interactive HTML report](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
