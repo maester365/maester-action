@@ -53,9 +53,9 @@ inputs:
     required: false
     default: "None"
   step_summary:
-    description: "Define whether a summary is outputted to GitHub Actions."
+    description: "Level of detail written to the GitHub Actions step summary. Options: 'Full' (complete report with all test details), 'Summary' (header, counts table, and per-test pass/fail list), 'Table' (header and counts table only). Use 'false' to disable. Legacy 'true' is treated as 'Full'."
     required: false
-    default: "true"
+    default: "Full"
   artifact_upload:
     description: "Define whether the results are uploaded as Artifacts."
     required: false
@@ -164,7 +164,7 @@ runs:
           -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `
           -PesterVerbosity '${{ inputs.pester_verbosity }}' `
           -IsDebug ('${{runner.debug}}' -eq '1') `
-          -GitHubStepSummary ('${{ inputs.step_summary }}' -eq 'true') `
+          -GitHubStepSummary '${{ inputs.step_summary }}' `
           -MailRecipients '${{ inputs.mail_recipients }}' `
           -MailUser '${{ inputs.mail_userid }}' `
           -TestResultURI '${{ inputs.mail_testresultsuri }}' `
