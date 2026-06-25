@@ -353,11 +353,13 @@ PROCESS {
                     NotRun  = '❔'
                     Skipped = '🚫'
                 }
-                $summaryContent += "`n## Test Summary`n`n| Test | Status |`n|-|:-:|`n"
+                $sb = [System.Text.StringBuilder]::new()
+                [void]$sb.Append("`n## Test Summary`n`n| Test | Status |`n|-|:-:|`n")
                 foreach ($test in $results.Tests) {
                     $icon = if ($StatusIcon.ContainsKey($test.Result)) { $StatusIcon[$test.Result] } else { '❔' }
-                    $summaryContent += "| $($test.Name) | $icon |`n"
+                    [void]$sb.Append("| $($test.Name) | $icon |`n")
                 }
+                $summaryContent += $sb.ToString()
             }
         }
 
@@ -365,12 +367,14 @@ PROCESS {
         if (-not [string]::IsNullOrEmpty($summaryContent)) {
             $maxSize = 1000KB # GitHub's limit is 1024 KB, but we leave some room for the truncation message and encoding overhead
             $truncationMsg = "`n`n**⚠ TRUNCATED: Output exceeded GitHub's 1024 KB limit.**"
-            $bytesPerChar = [System.Text.Encoding]::UTF8.GetByteCount('a')
 
-            if ([System.Text.Encoding]::UTF8.GetByteCount($summaryContent) -gt $maxSize) {
+            $summaryBytes = [System.Text.Encoding]::UTF8.GetBytes($summaryContent)
+            if ($summaryBytes.Length -gt $maxSize) {
                 Write-Host "❌ Truncating output to prevent failure."
-                $maxContentSize = $maxSize - ($truncationMsg.Length * $bytesPerChar) - 4KB
-                $summaryContent = $summaryContent.Substring(0, $maxContentSize / $bytesPerChar) + $truncationMsg
+                $msgBytes = [System.Text.Encoding]::UTF8.GetBytes($truncationMsg)
+                $maxContentBytes = $maxSize - $msgBytes.Length - 4KB
+                if ($maxContentBytes -lt 0) { $maxContentBytes = 0 }
+                $summaryContent = ([System.Text.Encoding]::UTF8.GetString($summaryBytes, 0, [int]$maxContentBytes)) + $truncationMsg
             }
 
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryContent
