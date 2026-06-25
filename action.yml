@@ -55,7 +55,7 @@ inputs:
   step_summary:
     description: "Level of detail written to the GitHub Actions step summary. Options: 'Full' (complete report with all test details), 'Summary' (header, counts table, and per-test pass/fail list), 'Table' (header and counts table only). Use 'false' to disable. Legacy 'true' is treated as 'Full'."
     required: false
-    default: "Full"
+    default: "Table"
   artifact_upload:
     description: "Define whether the results are uploaded as Artifacts."
     required: false
@@ -193,11 +193,11 @@ runs:
         MAESTER_HTML_PATH: test-results/test-results.html
       with:
         script: |
-          const upload = require(`${process.env.GITHUB_ACTION_PATH}/script/Upload-HtmlReportArtifact.js`);
+          const upload = require('${{ github.action_path }}/script/Upload-HtmlReportArtifact.js');
           await upload({ core });
 
     - name: 🔗 Add HTML report link to step summary
-      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && inputs.step_summary != 'false'
+      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && !contains('false', inputs.step_summary)
       shell: bash
       run: |
         echo "" >> $GITHUB_STEP_SUMMARY

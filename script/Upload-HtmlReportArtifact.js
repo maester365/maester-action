@@ -4,7 +4,7 @@
 // mime_type=text/html, so the file is rendered inline in the browser.
 //
 // Invoked from action.yml via actions/github-script:
-//   const upload = require(`${process.env.GITHUB_ACTION_PATH}/script/Upload-HtmlReportArtifact.js`);
+//   const upload = require('${{ github.action_path }}/script/Upload-HtmlReportArtifact.js');
 //   await upload({ core });
 //
 // Required environment variables:
@@ -19,15 +19,19 @@ const crypto = require('crypto');
 // Extract the workflow run/job backend IDs from the runtime token's `scp` claim
 // (format: "Actions.Results:{runId}:{jobId}"). These identify the artifact owner.
 function extractBackendIds(jwt) {
-  const parts = jwt.split('.');
-  if (parts.length < 2) return [null, null];
-  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-  const scp = payload.scp || '';
-  for (const scope of scp.split(' ')) {
-    if (scope.startsWith('Actions.Results:')) {
-      const segs = scope.split(':');
-      if (segs.length >= 3) return [segs[1], segs[2]];
+  try {
+    const parts = jwt.split('.');
+    if (parts.length < 2) return [null, null];
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    const scp = payload.scp || '';
+    for (const scope of scp.split(' ')) {
+      if (scope.startsWith('Actions.Results:')) {
+        const segs = scope.split(':');
+        if (segs.length >= 3) return [segs[1], segs[2]];
+      }
     }
+  } catch (err) {
+    console.warn(`Failed to extract backend IDs from JWT: ${err.message}`);
   }
   return [null, null];
 }
@@ -53,7 +57,13 @@ module.exports = async ({ core }) => {
     return;
   }
 
-  const origin = new URL(resultsUrl).origin;
+  let origin;
+  try {
+    origin = new URL(resultsUrl).origin;
+  } catch {
+    core.warning(`Invalid ACTIONS_RESULTS_URL: ${resultsUrl}`);
+    return;
+  }
   const artifactName = process.env.MAESTER_ARTIFACT_NAME || 'maester-report.html';
   const authHeaders = {
     'Authorization': `Bearer ${runtimeToken}`,

@@ -319,30 +319,21 @@ PROCESS {
     if ($summaryMode -ne 'Disabled') {
         Write-Host "📝 Adding test results to GitHub step summary (mode: $summaryMode)"
 
+        # Build the markdown content for the selected mode into a single string,
+        # so the size check/truncation only has to run once before writing.
+        $summaryContent = $null
+
         if ($summaryMode -eq 'Full') {
-            # Full mode: write the complete markdown report file (original behaviour)
+            # Full mode: use the complete markdown report file (original behaviour)
             $filePath = 'test-results/test-results.md'
             if (Test-Path $filePath) {
-                $maxSize = 1000KB # GitHub's limit is 1024 KB, but we leave some room for the truncation message and encoding overhead
-                $truncationMsg = "`n`n**⚠ TRUNCATED: Output exceeded GitHub's 1024 KB limit.**"
-
-                $fileSize = (Get-Item $filePath).Length
-                if ($fileSize -gt $maxSize) {
-                    Write-Host "❌ Truncating output file to prevent failure."
-                    $content = Get-Content $filePath -Raw
-                    $maxContentSize = $maxSize - ($truncationMsg.Length * [System.Text.Encoding]::UTF8.GetByteCount('a')) - 4KB
-                    $truncatedContent = $content.Substring(0, $maxContentSize / [System.Text.Encoding]::UTF8.GetByteCount('a'))
-                    $truncatedContent | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding UTF8 -Append
-                    Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $truncationMsg
-                } else {
-                    Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $(Get-Content $filePath)
-                }
+                $summaryContent = Get-Content $filePath -Raw
             } else {
                 Write-Host "❌ Markdown report not found: $filePath"
             }
         } else {
             # Table and Summary modes: generate compact markdown directly from $results
-            $headerMd = @"
+            $summaryContent = @"
 # <img src="https://maester.dev/img/logo.svg" alt="Maester logo" height="40" width="40" /> Maester Test Results
 
 **Tenant:** $($results.TenantName)
@@ -353,7 +344,6 @@ PROCESS {
 |:-:|:-:|:-:|:-:|
 | **$($results.TotalCount)** | **$($results.PassedCount)** | **$($results.FailedCount)** | **$($results.NotRunCount)** |
 "@
-            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $headerMd
 
             if ($summaryMode -eq 'Summary') {
                 # Summary mode: also append the per-test pass/fail table
@@ -363,13 +353,27 @@ PROCESS {
                     NotRun  = '❔'
                     Skipped = '🚫'
                 }
-                $summaryMd = "`n## Test Summary`n`n| Test | Status |`n|-|:-:|`n"
+                $summaryContent += "`n## Test Summary`n`n| Test | Status |`n|-|:-:|`n"
                 foreach ($test in $results.Tests) {
                     $icon = if ($StatusIcon.ContainsKey($test.Result)) { $StatusIcon[$test.Result] } else { '❔' }
-                    $summaryMd += "| $($test.Name) | $icon |`n"
+                    $summaryContent += "| $($test.Name) | $icon |`n"
                 }
-                Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryMd
             }
+        }
+
+        # Single size check for all modes: GitHub's step summary limit is 1024 KB.
+        if (-not [string]::IsNullOrEmpty($summaryContent)) {
+            $maxSize = 1000KB # GitHub's limit is 1024 KB, but we leave some room for the truncation message and encoding overhead
+            $truncationMsg = "`n`n**⚠ TRUNCATED: Output exceeded GitHub's 1024 KB limit.**"
+            $bytesPerChar = [System.Text.Encoding]::UTF8.GetByteCount('a')
+
+            if ([System.Text.Encoding]::UTF8.GetByteCount($summaryContent) -gt $maxSize) {
+                Write-Host "❌ Truncating output to prevent failure."
+                $maxContentSize = $maxSize - ($truncationMsg.Length * $bytesPerChar) - 4KB
+                $summaryContent = $summaryContent.Substring(0, $maxContentSize / $bytesPerChar) + $truncationMsg
+            }
+
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryContent
         }
     }
 

@@ -106,6 +106,7 @@ jobs:
           maester_version: latest
           disable_telemetry: false
           step_summary: Table  # Full, Summary, Table, or false
+          artifact_upload_html: true # Upload html report as separate artifact
 
       - name: Write status 📃
         shell: bash
