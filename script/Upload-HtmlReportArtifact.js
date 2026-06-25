@@ -15,6 +15,20 @@
 
 const fs = require('fs');
 const crypto = require('crypto');
+const path = require('path');
+
+// Resolve a (possibly env-supplied) report path and confine it to the workspace
+// directory. This prevents path traversal (CWE-22) from an unexpected
+// MAESTER_HTML_PATH value by rejecting anything that escapes the base dir.
+function resolveReportPath(rawPath) {
+  const baseDir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd());
+  const resolved = path.resolve(baseDir, rawPath);
+  const relative = path.relative(baseDir, resolved);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    return null;
+  }
+  return resolved;
+}
 
 // Extract the workflow run/job backend IDs from the runtime token's `scp` claim
 // (format: "Actions.Results:{runId}:{jobId}"). These identify the artifact owner.
@@ -37,7 +51,11 @@ function extractBackendIds(jwt) {
 }
 
 module.exports = async ({ core }) => {
-  const filePath = process.env.MAESTER_HTML_PATH || 'test-results/test-results.html';
+  const filePath = resolveReportPath(process.env.MAESTER_HTML_PATH || 'test-results/test-results.html');
+  if (!filePath) {
+    core.warning('HTML report path is outside the workspace; refusing to upload.');
+    return;
+  }
   if (!fs.existsSync(filePath)) {
     core.warning(`HTML report not found: ${filePath}`);
     return;
