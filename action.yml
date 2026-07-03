@@ -189,15 +189,22 @@ runs:
       if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload_html == 'true'
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
       env:
+        MAESTER_ACTION_PATH: ${{ github.action_path }}
         MAESTER_ARTIFACT_NAME: maester-report-${{ inputs.maester_version }}-${{ env.NOW }}.html
         MAESTER_HTML_PATH: test-results/test-results.html
       with:
         script: |
-          const upload = require('${{ github.action_path }}/script/Upload-HtmlReportArtifact.js');
+          // Pass the action path via env instead of interpolating it into this JS
+          // source: on Windows runners github.action_path contains backslashes,
+          // which would be mangled as string escape sequences by the JS parser.
+          const path = require('path');
+          const upload = require(path.join(process.env.MAESTER_ACTION_PATH, 'script', 'Upload-HtmlReportArtifact.js'));
           await upload({ core });
 
     - name: 🔗 Add HTML report link to step summary
-      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && !contains('false', inputs.step_summary)
+      # Only add the link when step_summary is an enabled mode (matches the
+      # normalization in Run-MaesterAction.ps1); expression comparison is case-insensitive.
+      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && contains(fromJSON('["true","Full","Summary","Table"]'), inputs.step_summary)
       shell: bash
       run: |
         echo "" >> $GITHUB_STEP_SUMMARY

@@ -3,8 +3,10 @@
 // wraps files in a ZIP), this calls GitHub's Twirp Artifact API directly with
 // mime_type=text/html, so the file is rendered inline in the browser.
 //
-// Invoked from action.yml via actions/github-script:
-//   const upload = require('${{ github.action_path }}/script/Upload-HtmlReportArtifact.js');
+// Invoked from action.yml via actions/github-script (the action path is passed
+// through the MAESTER_ACTION_PATH env var to stay Windows-safe):
+//   const path = require('path');
+//   const upload = require(path.join(process.env.MAESTER_ACTION_PATH, 'script', 'Upload-HtmlReportArtifact.js'));
 //   await upload({ core });
 //
 // Required environment variables:
@@ -22,6 +24,9 @@ const path = require('path');
 // MAESTER_HTML_PATH value by rejecting anything that escapes the base dir.
 function resolveReportPath(rawPath) {
   const baseDir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd());
+  // This resolve+relative check IS the CWE-22 mitigation: anything escaping
+  // baseDir is rejected below, so the taint warning is a false positive.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const resolved = path.resolve(baseDir, rawPath);
   const relative = path.relative(baseDir, resolved);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -51,12 +56,17 @@ function extractBackendIds(jwt) {
 }
 
 module.exports = async ({ core }) => {
+  // MAESTER_HTML_PATH is a file path set by action.yml (never HTML markup);
+  // the XSS rule below fires on the variable name only.
+  // eslint-disable-next-line xss/no-mixed-html -- file path, no HTML is rendered
   const filePath = resolveReportPath(process.env.MAESTER_HTML_PATH || 'test-results/test-results.html');
   if (!filePath) {
     core.warning('HTML report path is outside the workspace; refusing to upload.');
     return;
   }
-  if (!fs.existsSync(filePath)) {
+  // filePath is confined to GITHUB_WORKSPACE by resolveReportPath above (CWE-22 mitigated).
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- sanitized by resolveReportPath
+  if (!fs.existsSync(filePath)) { // nosemgrep: javascript_pathtraversal_rule-non-literal-fs-filename
     core.warning(`HTML report not found: ${filePath}`);
     return;
   }
@@ -108,7 +118,9 @@ module.exports = async ({ core }) => {
   const { signed_upload_url: signedUploadUrl } = await createResp.json();
 
   // Step 2: Upload the raw HTML bytes to the signed blob URL (no ZIP wrapping)
-  const fileBytes = fs.readFileSync(filePath);
+  // filePath is confined to GITHUB_WORKSPACE by resolveReportPath (CWE-22 mitigated).
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- sanitized by resolveReportPath
+  const fileBytes = fs.readFileSync(filePath); // nosemgrep: javascript_pathtraversal_rule-non-literal-fs-filename
   const sha256 = crypto.createHash('sha256').update(fileBytes).digest('hex');
   const blobResp = await fetch(signedUploadUrl, {
     method: 'PUT',
