@@ -51,8 +51,8 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Debug run')]
     [bool]$IsDebug = $false,
 
-    [Parameter(Mandatory = $false, HelpMessage = 'Add test results to GitHub step summary')]
-    [bool]$GitHubStepSummary = $false,
+    [Parameter(Mandatory = $false, HelpMessage = 'Add test results to GitHub step summary. Options: Full, Summary, Table, false. Legacy true is treated as Full.')]
+    [string]$GitHubStepSummary = 'false',
 
     [Parameter(Mandatory = $false, HelpMessage = 'Teams Webhook Uri to send test results to, see: https://maester.dev/docs/monitoring/teams')]
     [string]$TeamsWebhookUri = $null,
@@ -111,8 +111,16 @@ BEGIN {
 
     # Load new MarkdownWriter
     $markdownReportScript = Join-Path -Path $scriptPath -ChildPath 'Get-MtMarkdownReportAction.ps1'
+    # Normalise the step summary input once: legacy 'true' → 'Full', 'false' / empty / anything else → disabled
+    $summaryMode = switch ($GitHubStepSummary.ToLower()) {
+        'true'    { 'Full' }
+        'full'    { 'Full' }
+        'summary' { 'Summary' }
+        'table'   { 'Table' }
+        default   { 'Disabled' }
+    }
     # Test if we even need this script since it is included in version 1.0.79 or higher
-    if (($GitHubStepSummary -eq $true) -and ($installedVersion -lt [version]'1.0.79')) {
+    if (($summaryMode -ne 'Disabled') -and ($installedVersion -lt [version]'1.0.79')) {
         if (Test-Path $markdownReportScript) {
             Write-Debug "Importing script: $markdownReportScript"
             . $markdownReportScript
@@ -307,37 +315,69 @@ PROCESS {
     }
 
     # Write the markdown report to the Github step summary file
-    if ($GitHubStepSummary) {
-        Write-Host "📝 Adding test results to GitHub step summary"
-        # Add step summary
-        $filePath = "test-results/test-results.md"
-        if (Test-Path $filePath) {
-            $maxSize = 1024KB
-            $truncationMsg = "`n`n**⚠ TRUNCATED: Output exceeded GitHub's 1024 KB limit.**"
+    # ($summaryMode was normalised from the step summary input earlier)
+    if ($summaryMode -ne 'Disabled') {
+        Write-Host "📝 Adding test results to GitHub step summary (mode: $summaryMode)"
 
-            # Check file size
-            $fileSize = (Get-Item $filePath).Length
-            if ($fileSize -gt $maxSize) {
-                Write-Host "❌ Truncating output file to prevent failure."
+        # Build the markdown content for the selected mode into a single string,
+        # so the size check/truncation only has to run once before writing.
+        $summaryContent = $null
 
-                # Read the file content
-                $content = Get-Content $filePath -Raw
-
-                # Calculate the maximum content size to fit within the limit
-                $maxContentSize = $maxSize - ($truncationMsg.Length * [System.Text.Encoding]::UTF8.GetByteCount("a")) - 4KB
-
-                # Truncate the content
-                $truncatedContent = $content.Substring(0, $maxContentSize / [System.Text.Encoding]::UTF8.GetByteCount("a"))
-
-                # Write the truncated content and truncation message to the new file
-                $truncatedContent | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding UTF8 -Append
-                Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $truncationMsg
-
+        if ($summaryMode -eq 'Full') {
+            # Full mode: use the complete markdown report file (original behaviour)
+            $filePath = 'test-results/test-results.md'
+            if (Test-Path $filePath) {
+                $summaryContent = Get-Content $filePath -Raw
             } else {
-                Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $(Get-Content $filePath)
+                Write-Host "❌ Markdown report not found: $filePath"
             }
         } else {
-            Write-Host "❌ Markdown report not found: $filePath"
+            # Table and Summary modes: generate compact markdown directly from $results
+            $summaryContent = @"
+# <img src="https://maester.dev/img/logo.svg" alt="Maester logo" height="40" width="40" /> Maester Test Results
+
+**Tenant:** $($results.TenantName)
+
+**Date:** $($results.ExecutedAt)
+
+| 🔥 <br/> Total Tests | ✅ <br/> Passed | ❌ <br/> Failed | ❔ <br/> Not Run |
+|:-:|:-:|:-:|:-:|
+| **$($results.TotalCount)** | **$($results.PassedCount)** | **$($results.FailedCount)** | **$($results.NotRunCount)** |
+"@
+
+            if ($summaryMode -eq 'Summary') {
+                # Summary mode: also append the per-test pass/fail table
+                $StatusIcon = @{
+                    Passed  = '✅'
+                    Failed  = '❌'
+                    NotRun  = '❔'
+                    Skipped = '🚫'
+                }
+                $sb = [System.Text.StringBuilder]::new()
+                [void]$sb.Append("`n## Test Summary`n`n| Test | Status |`n|-|:-:|`n")
+                foreach ($test in $results.Tests) {
+                    $icon = if ($StatusIcon.ContainsKey($test.Result)) { $StatusIcon[$test.Result] } else { '❔' }
+                    [void]$sb.Append("| $($test.Name) | $icon |`n")
+                }
+                $summaryContent += $sb.ToString()
+            }
+        }
+
+        # Single size check for all modes: GitHub's step summary limit is 1024 KB.
+        if (-not [string]::IsNullOrEmpty($summaryContent)) {
+            $maxSize = 1000KB # GitHub's limit is 1024 KB, but we leave some room for the truncation message and encoding overhead
+            $truncationMsg = "`n`n**⚠ TRUNCATED: Output exceeded GitHub's 1024 KB limit.**"
+
+            $summaryBytes = [System.Text.Encoding]::UTF8.GetBytes($summaryContent)
+            if ($summaryBytes.Length -gt $maxSize) {
+                Write-Host "❌ Truncating output to prevent failure."
+                $msgBytes = [System.Text.Encoding]::UTF8.GetBytes($truncationMsg)
+                $maxContentBytes = $maxSize - $msgBytes.Length - 4KB
+                if ($maxContentBytes -lt 0) { $maxContentBytes = 0 }
+                $summaryContent = ([System.Text.Encoding]::UTF8.GetString($summaryBytes, 0, [int]$maxContentBytes)) + $truncationMsg
+            }
+
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryContent
         }
     }
 

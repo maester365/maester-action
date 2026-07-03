@@ -53,13 +53,17 @@ inputs:
     required: false
     default: "None"
   step_summary:
-    description: "Define whether a summary is outputted to GitHub Actions."
+    description: "Level of detail written to the GitHub Actions step summary. Options: 'Full' (complete report with all test details), 'Summary' (header, counts table, and per-test pass/fail list), 'Table' (header and counts table only). Use 'false' to disable. Legacy 'true' is treated as 'Full'."
     required: false
-    default: "true"
+    default: "Table"
   artifact_upload:
     description: "Define whether the results are uploaded as Artifacts."
     required: false
     default: "true"
+  artifact_upload_html:
+    description: "Upload the self-contained HTML report as a separate artifact and add a link to it in the step summary. The artifact is uploaded with an HTML mime type so opening the link renders the report in the browser."
+    required: false
+    default: "false"
 
   disable_telemetry:
     description: "If set, telemetry information will not be logged."
@@ -164,7 +168,7 @@ runs:
           -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `
           -PesterVerbosity '${{ inputs.pester_verbosity }}' `
           -IsDebug ('${{runner.debug}}' -eq '1') `
-          -GitHubStepSummary ('${{ inputs.step_summary }}' -eq 'true') `
+          -GitHubStepSummary '${{ inputs.step_summary }}' `
           -MailRecipients '${{ inputs.mail_recipients }}' `
           -MailUser '${{ inputs.mail_userid }}' `
           -TestResultURI '${{ inputs.mail_testresultsuri }}' `
@@ -179,3 +183,30 @@ runs:
         name: maester-test-results-${{inputs.maester_version}}-${{ env.NOW }}
         path: test-results
         include-hidden-files: true
+
+    - name: 📊 Upload Maester HTML Report as separate artifact
+      id: maester-html-artifact
+      if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload_html == 'true'
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+      env:
+        MAESTER_ACTION_PATH: ${{ github.action_path }}
+        MAESTER_ARTIFACT_NAME: maester-report-${{ inputs.maester_version }}-${{ env.NOW }}.html
+        MAESTER_HTML_PATH: test-results/test-results.html
+      with:
+        script: |
+          // Pass the action path via env instead of interpolating it into this JS
+          // source: on Windows runners github.action_path contains backslashes,
+          // which would be mangled as string escape sequences by the JS parser.
+          const path = require('path');
+          const upload = require(path.join(process.env.MAESTER_ACTION_PATH, 'script', 'Upload-HtmlReportArtifact.js'));
+          await upload({ core });
+
+    - name: 🔗 Add HTML report link to step summary
+      # Only add the link when step_summary is an enabled mode (matches the
+      # normalization in Run-MaesterAction.ps1); expression comparison is case-insensitive.
+      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && contains(fromJSON('["true","Full","Summary","Table"]'), inputs.step_summary)
+      shell: bash
+      run: |
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "### 📊 HTML Report" >> "$GITHUB_STEP_SUMMARY"
+        echo "[Open HTML report artifact](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"

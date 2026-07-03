@@ -34,8 +34,9 @@ Check out the [Maester documentation](https://maester.dev/) for more information
 | `exclude_tags`                | A list of tags to exclude from the test run (comma-separated).                                 | ❌       |                             |
 | `maester_version`             | The version of Maester PowerShell to use (`latest`, `preview`, or specific version).           | ❌       | `latest`                    |
 | `pester_verbosity`            | Pester verbosity level (`None`, `Normal`, `Detailed`, `Diagnostic`).                           | ❌       | `None`                      |
-| `step_summary`                | Output a summary to GitHub Actions.                                                            | ❌       | `true`                      |
+| `step_summary`                | Level of detail in the GitHub Actions step summary: `Full` (complete report), `Summary` (counts + per-test pass/fail list), `Table` (counts only), or `false` to disable. Legacy `true` maps to `Full`. | ❌       | `Table`                      |
 | `artifact_upload`             | Upload test results as GitHub Action artifacts.                                                | ❌       | `true`                      |
+| `artifact_upload_html`        | Upload the self-contained HTML report as a separate artifact and add a link to it in the step summary (served with an HTML mime type so it renders in the browser). | ❌       | `false`                     |
 | `disable_telemetry`           | Disable telemetry logging.                                                                     | ❌       | `false`                     |
 | `mail_recipients`             | A list of email addresses to send the test results to (comma-separated).                       | ❌       |                             |
 | `mail_userid`                 | The user ID of the sender of the email.                                                        | ❌       |                             |
@@ -104,7 +105,8 @@ jobs:
           # check out https://www.powershellgallery.com/packages/Maester/
           maester_version: latest
           disable_telemetry: false
-          step_summary: true
+          step_summary: Table  # Full, Summary, Table, or false
+          artifact_upload_html: true # Upload html report as separate artifact
 
       - name: Write status 📃
         shell: bash
