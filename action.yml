@@ -61,7 +61,7 @@ inputs:
     required: false
     default: "true"
   artifact_upload_html:
-    description: "Upload the self-contained HTML report as a separate artifact and add a direct download link to the step summary."
+    description: "Upload the self-contained HTML report as a separate artifact and add a link to it in the step summary. The artifact is uploaded with an HTML mime type so opening the link renders the report in the browser."
     required: false
     default: "false"
 
@@ -209,4 +209,4 @@ runs:
       run: |
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 HTML Report" >> $GITHUB_STEP_SUMMARY
-        echo "[Open interactive HTML report](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
+        echo "[Open HTML report artifact](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY

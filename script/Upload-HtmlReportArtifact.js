@@ -1,7 +1,9 @@
 // Uploads the self-contained Maester HTML report as a standalone GitHub Actions
-// artifact and returns a direct URL. Unlike actions/upload-artifact (which always
+// artifact and returns the artifact's URL on the workflow run (which GitHub
+// serves inline in the browser). Unlike actions/upload-artifact (which always
 // wraps files in a ZIP), this calls GitHub's Twirp Artifact API directly with
-// mime_type=text/html, so the file is rendered inline in the browser.
+// mime_type=text/html, so opening the artifact link renders the report instead
+// of downloading a ZIP.
 //
 // Invoked from action.yml via actions/github-script (the action path is passed
 // through the MAESTER_ACTION_PATH env var to stay Windows-safe):
