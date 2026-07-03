@@ -67,9 +67,18 @@ module.exports = async ({ core }) => {
     return;
   }
   // filePath is confined to GITHUB_WORKSPACE by resolveReportPath above (CWE-22 mitigated).
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- sanitized by resolveReportPath
-  if (!fs.existsSync(filePath)) { // nosemgrep: javascript_pathtraversal_rule-non-literal-fs-filename
+  // Use statSync (not existsSync) so a directory path degrades to a warning
+  // instead of readFileSync throwing EISDIR and failing the step.
+  let fileStats;
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- sanitized by resolveReportPath
+    fileStats = fs.statSync(filePath); // nosemgrep: javascript_pathtraversal_rule-non-literal-fs-filename
+  } catch {
     core.warning(`HTML report not found: ${filePath}`);
+    return;
+  }
+  if (!fileStats.isFile()) {
+    core.warning(`HTML report path is not a file: ${filePath}`);
     return;
   }
 

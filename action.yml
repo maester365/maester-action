@@ -207,6 +207,6 @@ runs:
       if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && contains(fromJSON('["true","Full","Summary","Table"]'), inputs.step_summary)
       shell: bash
       run: |
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📊 HTML Report" >> $GITHUB_STEP_SUMMARY
-        echo "[Open HTML report artifact](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "### 📊 HTML Report" >> "$GITHUB_STEP_SUMMARY"
+        echo "[Open HTML report artifact](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"

@@ -111,8 +111,16 @@ BEGIN {
 
     # Load new MarkdownWriter
     $markdownReportScript = Join-Path -Path $scriptPath -ChildPath 'Get-MtMarkdownReportAction.ps1'
+    # Normalise the step summary input once: legacy 'true' → 'Full', 'false' / empty / anything else → disabled
+    $summaryMode = switch ($GitHubStepSummary.ToLower()) {
+        'true'    { 'Full' }
+        'full'    { 'Full' }
+        'summary' { 'Summary' }
+        'table'   { 'Table' }
+        default   { 'Disabled' }
+    }
     # Test if we even need this script since it is included in version 1.0.79 or higher
-    if (($GitHubStepSummary -ne 'false') -and ($GitHubStepSummary -ne 'Disabled') -and ($installedVersion -lt [version]'1.0.79')) {
+    if (($summaryMode -ne 'Disabled') -and ($installedVersion -lt [version]'1.0.79')) {
         if (Test-Path $markdownReportScript) {
             Write-Debug "Importing script: $markdownReportScript"
             . $markdownReportScript
@@ -307,15 +315,7 @@ PROCESS {
     }
 
     # Write the markdown report to the Github step summary file
-    # Normalise the input: legacy 'true' → 'Full', 'false' / empty → disabled
-    $summaryMode = switch ($GitHubStepSummary.ToLower()) {
-        'true'    { 'Full' }
-        'full'    { 'Full' }
-        'summary' { 'Summary' }
-        'table'   { 'Table' }
-        default   { 'Disabled' }
-    }
-
+    # ($summaryMode was normalised from the step summary input earlier)
     if ($summaryMode -ne 'Disabled') {
         Write-Host "📝 Adding test results to GitHub step summary (mode: $summaryMode)"
 
