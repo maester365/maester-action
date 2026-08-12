@@ -185,6 +185,7 @@ PROCESS {
     $MaesterParameters = @{
         Path                 = $Path
         PesterConfiguration  = $PesterConfiguration
+        Verbosity            = $PesterVerbosity
         OutputFolder         = 'test-results'
         OutputFolderFileName = 'test-results'
         PassThru             = $true
