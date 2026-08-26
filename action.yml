@@ -53,13 +53,17 @@ inputs:
     required: false
     default: "None"
   step_summary:
-    description: "Define whether a summary is outputted to GitHub Actions."
+    description: "Level of detail written to the GitHub Actions step summary. Options: 'Full' (complete report with all test details), 'Summary' (header, counts table, and per-test pass/fail list), 'Table' (header and counts table only). Use 'false' to disable. Legacy 'true' is treated as 'Full'."
     required: false
-    default: "true"
+    default: "Table"
   artifact_upload:
     description: "Define whether the results are uploaded as Artifacts."
     required: false
     default: "true"
+  artifact_upload_html:
+    description: "Upload the self-contained HTML report as a separate artifact and add a link to it in the step summary. The artifact is uploaded with an HTML mime type so opening the link renders the report in the browser."
+    required: false
+    default: "false"
 
   disable_telemetry:
     description: "If set, telemetry information will not be logged."
@@ -129,7 +133,7 @@ runs:
 
     - name: 🧑‍💻 Checkout latest private tests
       if: ${{ inputs.include_private_tests == 'true' }}
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #v7.0.0
 
     - name: ❌ Log error message
       if: ${{ failure() }}
@@ -139,7 +143,7 @@ runs:
       shell: bash
 
     - name: 🔑 Sign in to Entra ID
-      uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 #v2.3.0
+      uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca #v3.0.1
       with:
         client-id: ${{ inputs.client_id }}
         tenant-id: ${{ inputs.tenant_id }}
@@ -164,7 +168,7 @@ runs:
           -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `
           -PesterVerbosity '${{ inputs.pester_verbosity }}' `
           -IsDebug ('${{runner.debug}}' -eq '1') `
-          -GitHubStepSummary ('${{ inputs.step_summary }}' -eq 'true') `
+          -GitHubStepSummary '${{ inputs.step_summary }}' `
           -MailRecipients '${{ inputs.mail_recipients }}' `
           -MailUser '${{ inputs.mail_userid }}' `
           -TestResultURI '${{ inputs.mail_testresultsuri }}' `
@@ -173,9 +177,36 @@ runs:
           -TeamsTeamId '${{ inputs.notification_teams_team_id }}'
 
     - name: 📃 Archive Maester Html Report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f #v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a #v7.0.1
       if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload == 'true'
       with:
         name: maester-test-results-${{inputs.maester_version}}-${{ env.NOW }}
         path: test-results
         include-hidden-files: true
+
+    - name: 📊 Upload Maester HTML Report as separate artifact
+      id: maester-html-artifact
+      if: always() && steps.maester.outputs.results_json != '' && inputs.artifact_upload_html == 'true'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 #v9.0.0
+      env:
+        MAESTER_ACTION_PATH: ${{ github.action_path }}
+        MAESTER_ARTIFACT_NAME: maester-report-${{ inputs.maester_version }}-${{ env.NOW }}.html
+        MAESTER_HTML_PATH: test-results/test-results.html
+      with:
+        script: |
+          // Pass the action path via env instead of interpolating it into this JS
+          // source: on Windows runners github.action_path contains backslashes,
+          // which would be mangled as string escape sequences by the JS parser.
+          const path = require('path');
+          const upload = require(path.join(process.env.MAESTER_ACTION_PATH, 'script', 'Upload-HtmlReportArtifact.js'));
+          await upload({ core });
+
+    - name: 🔗 Add HTML report link to step summary
+      # Only add the link when step_summary is an enabled mode (matches the
+      # normalization in Run-MaesterAction.ps1); expression comparison is case-insensitive.
+      if: always() && steps.maester-html-artifact.outputs.artifact-url != '' && contains(fromJSON('["true","Full","Summary","Table"]'), inputs.step_summary)
+      shell: bash
+      run: |
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "### 📊 HTML Report" >> "$GITHUB_STEP_SUMMARY"
+        echo "[Open HTML report artifact](${{ steps.maester-html-artifact.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"

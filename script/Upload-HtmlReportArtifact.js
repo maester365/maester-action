@@ -1,0 +1,173 @@
+// Uploads the self-contained Maester HTML report as a standalone GitHub Actions
+// artifact and returns the artifact's URL on the workflow run (which GitHub
+// serves inline in the browser). Unlike actions/upload-artifact (which always
+// wraps files in a ZIP), this calls GitHub's Twirp Artifact API directly with
+// mime_type=text/html, so opening the artifact link renders the report instead
+// of downloading a ZIP.
+//
+// Invoked from action.yml via actions/github-script (the action path is passed
+// through the MAESTER_ACTION_PATH env var to stay Windows-safe):
+//   const path = require('path');
+//   const upload = require(path.join(process.env.MAESTER_ACTION_PATH, 'script', 'Upload-HtmlReportArtifact.js'));
+//   await upload({ core });
+//
+// Required environment variables:
+//   ACTIONS_RUNTIME_TOKEN, ACTIONS_RESULTS_URL  (exposed inside JS action handlers)
+//   GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID
+//   MAESTER_ARTIFACT_NAME  (the desired artifact file name, e.g. maester-report-latest-...html)
+//   MAESTER_HTML_PATH      (path to the HTML report file)
+
+const fs = require('fs');
+const crypto = require('crypto');
+const path = require('path');
+
+// Resolve a (possibly env-supplied) report path and confine it to the workspace
+// directory. This prevents path traversal (CWE-22) from an unexpected
+// MAESTER_HTML_PATH value by rejecting anything that escapes the base dir.
+function resolveReportPath(rawPath) {
+  const baseDir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd());
+  // This resolve+relative check IS the CWE-22 mitigation: anything escaping
+  // baseDir is rejected below, so the taint warning is a false positive.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
+  const resolved = path.resolve(baseDir, rawPath);
+  const relative = path.relative(baseDir, resolved);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    return null;
+  }
+  return resolved;
+}
+
+// Extract the workflow run/job backend IDs from the runtime token's `scp` claim
+// (format: "Actions.Results:{runId}:{jobId}"). These identify the artifact owner.
+function extractBackendIds(jwt) {
+  try {
+    const parts = jwt.split('.');
+    if (parts.length < 2) return [null, null];
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    const scp = payload.scp || '';
+    for (const scope of scp.split(' ')) {
+      if (scope.startsWith('Actions.Results:')) {
+        const segs = scope.split(':');
+        if (segs.length >= 3) return [segs[1], segs[2]];
+      }
+    }
+  } catch (err) {
+    console.warn(`Failed to extract backend IDs from JWT: ${err.message}`);
+  }
+  return [null, null];
+}
+
+module.exports = async ({ core }) => {
+  // MAESTER_HTML_PATH is a file path set by action.yml (never HTML markup);
+  // the XSS rule below fires on the variable name only.
+  // eslint-disable-next-line xss/no-mixed-html -- file path, no HTML is rendered
+  const filePath = resolveReportPath(process.env.MAESTER_HTML_PATH || 'test-results/test-results.html');
+  if (!filePath) {
+    core.warning('HTML report path is outside the workspace; refusing to upload.');
+    return;
+  }
+  // filePath is confined to GITHUB_WORKSPACE by resolveReportPath above (CWE-22 mitigated).
+  // Use statSync (not existsSync) so a directory path degrades to a warning
+  // instead of readFileSync throwing EISDIR and failing the step.
+  let fileStats;
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- sanitized by resolveReportPath
+    fileStats = fs.statSync(filePath); // nosemgrep: javascript_pathtraversal_rule-non-literal-fs-filename
+  } catch {
+    core.warning(`HTML report not found: ${filePath}`);
+    return;
+  }
+  if (!fileStats.isFile()) {
+    core.warning(`HTML report path is not a file: ${filePath}`);
+    return;
+  }
+
+  // The runtime token + results URL are only exposed inside JS action handlers
+  const runtimeToken = process.env.ACTIONS_RUNTIME_TOKEN;
+  const resultsUrl = process.env.ACTIONS_RESULTS_URL;
+  if (!runtimeToken || !resultsUrl) {
+    core.warning('ACTIONS_RUNTIME_TOKEN / ACTIONS_RESULTS_URL not available; cannot upload HTML artifact.');
+    return;
+  }
+
+  const [runBackendId, jobBackendId] = extractBackendIds(runtimeToken);
+  if (!runBackendId || !jobBackendId) {
+    core.warning('Could not extract backend IDs from ACTIONS_RUNTIME_TOKEN.');
+    return;
+  }
+
+  let origin;
+  try {
+    origin = new URL(resultsUrl).origin;
+  } catch {
+    core.warning(`Invalid ACTIONS_RESULTS_URL: ${resultsUrl}`);
+    return;
+  }
+  const artifactName = process.env.MAESTER_ARTIFACT_NAME || 'maester-report.html';
+  const authHeaders = {
+    'Authorization': `Bearer ${runtimeToken}`,
+    'Content-Type': 'application/json'
+  };
+
+  // Step 1: CreateArtifact — mime_type=text/html is what makes GitHub render
+  // the file inline in the browser instead of serving it as a ZIP download.
+  const createResp = await fetch(`${origin}/twirp/github.actions.results.api.v1.ArtifactService/CreateArtifact`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      workflow_run_backend_id: runBackendId,
+      workflow_job_run_backend_id: jobBackendId,
+      name: artifactName,
+      version: 7,
+      mime_type: 'text/html'
+    })
+  });
+  if (!createResp.ok) {
+    core.warning(`CreateArtifact failed (${createResp.status}): ${await createResp.text()}`);
+    return;
+  }
+  const { signed_upload_url: signedUploadUrl } = await createResp.json();
+
+  // Step 2: Upload the raw HTML bytes to the signed blob URL (no ZIP wrapping)
+  // filePath is confined to GITHUB_WORKSPACE by resolveReportPath (CWE-22 mitigated).
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- sanitized by resolveReportPath
+  const fileBytes = fs.readFileSync(filePath); // nosemgrep: javascript_pathtraversal_rule-non-literal-fs-filename
+  const sha256 = crypto.createHash('sha256').update(fileBytes).digest('hex');
+  const blobResp = await fetch(signedUploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'text/html',
+      'x-ms-blob-type': 'BlockBlob'
+    },
+    body: fileBytes
+  });
+  if (!blobResp.ok) {
+    core.warning(`Blob upload failed (${blobResp.status}): ${await blobResp.text()}`);
+    return;
+  }
+
+  // Step 3: FinalizeArtifact
+  const finalizeResp = await fetch(`${origin}/twirp/github.actions.results.api.v1.ArtifactService/FinalizeArtifact`, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify({
+      workflow_run_backend_id: runBackendId,
+      workflow_job_run_backend_id: jobBackendId,
+      name: artifactName,
+      size: fileBytes.length.toString(),
+      hash: `sha256:${sha256}`
+    })
+  });
+  if (!finalizeResp.ok) {
+    core.warning(`FinalizeArtifact failed (${finalizeResp.status}): ${await finalizeResp.text()}`);
+    return;
+  }
+  const { artifact_id: artifactId } = await finalizeResp.json();
+
+  const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+  const repository = process.env.GITHUB_REPOSITORY;
+  const runId = process.env.GITHUB_RUN_ID;
+  const artifactUrl = `${serverUrl}/${repository}/actions/runs/${runId}/artifacts/${artifactId}`;
+  core.info(`Uploaded HTML report (artifact id=${artifactId})`);
+  core.setOutput('artifact-url', artifactUrl);
+};
