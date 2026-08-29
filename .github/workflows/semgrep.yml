@@ -30,29 +30,47 @@ jobs:
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     name: Scan
     runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1
     steps:
+      # Check whether the secrets/context required for publishing results are available.
+      # PRs from forks never receive repository secrets, and internal pushes/schedules
+      # may run before the optional Semgrep secrets have been configured.
+      - name: Check preconditions 📃
+        id: preconditions
+        shell: bash
+        env:
+          IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: |
+          if [ "$IS_FORK_PR" == "true" ]; then
+            echo "is_fork_pr=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -z "$SEMGREP_APP_TOKEN" ]; then
+            echo "token_missing=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # Checkout project source
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       # Scan code using project's configuration on https://semgrep.dev/manage
-      # Run Semgrep with publishing for internal events (pushes, scheduled runs, internal PRs)
+      # Run Semgrep with publishing for internal events with the Semgrep App token configured
       - name: Run Semgrep with publishing
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: returntocorp/semgrep-action@fcd5ab7459e8d91cb1777481980d1b18b4fc6735
-        with:
-          publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
-          publishDeployment: ${{ secrets.SEMGREP_DEPLOYMENT_ID }}
-          generateSarif: "1"
+        if: ${{ steps.preconditions.outputs.is_fork_pr != 'true' && steps.preconditions.outputs.token_missing != 'true' }}
+        run: semgrep ci --sarif --output=semgrep.sarif
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
-      # Run Semgrep without publishing for PRs from forks, where secrets/permissions are unavailable
+      # Run Semgrep without publishing for PRs from forks, or when the Semgrep App token isn't configured
       - name: Run Semgrep without publishing
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-        uses: returntocorp/semgrep-action@fcd5ab7459e8d91cb1777481980d1b18b4fc6735
-        with:
-          generateSarif: "1"
-      # Upload SARIF file generated in previous step (only for internal events)
+        if: ${{ steps.preconditions.outputs.is_fork_pr == 'true' || steps.preconditions.outputs.token_missing == 'true' }}
+        run: semgrep scan --sarif --output=semgrep.sarif
+
+      # Upload SARIF file generated in previous step (only for internal events, and only if it was produced)
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@c793b717bc78562f491db7b0e93a3a178b099162 # v4.32.5
         with:
           sarif_file: semgrep.sarif
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        if: ${{ always() && steps.preconditions.outputs.is_fork_pr != 'true' && hashFiles('semgrep.sarif') != '' }}
