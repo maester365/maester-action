@@ -34,6 +34,10 @@ inputs:
     description: "Include preview tests."
     required: false
     default: "false"
+  include_affected_objects:
+    description: "Collect the objects touched by the test run. Adds the Affected objects page to the html report and writes test-results-affected-objects.json. Requires a Maester version that supports -IncludeAffectedObjects."
+    required: false
+    default: "false"
   include_tags:
     description: "A list of tags to include in the test run. Please separate multiple tags with a comma (without space)."
     required: false
@@ -163,6 +167,7 @@ runs:
           -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
           -IncludeLongRunning ('${{ inputs.include_longrunning_tests }}' -eq 'true') `
           -IncludePreview ('${{ inputs.include_preview_tests }}' -eq 'true') `
+          -IncludeAffectedObjects ('${{ inputs.include_affected_objects }}' -eq 'true') `
           -IncludeTags '${{ inputs.include_tags }}' `
           -ExcludeTags '${{ inputs.exclude_tags }}' `
           -DisableTelemetry ('${{ inputs.disable_telemetry}}' -eq 'true') `
