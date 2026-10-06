@@ -42,6 +42,9 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Include preview tests')]
     [bool]$IncludePreview = $false,
 
+    [Parameter(Mandatory = $false, HelpMessage = 'Include affected objects in the results and report')]
+    [bool]$IncludeAffectedObjects = $false,
+
     [Parameter(Mandatory = $false, HelpMessage = 'Maester version to install, options: latest, preview, or specific version')]
     [string]$MaesterVersion = '',
 
@@ -216,6 +219,12 @@ PROCESS {
     if ($IncludePreview) {
          $MaesterParameters.Add('IncludePreview', $true)
          Write-Host "📃 Including preview tests."
+    }
+
+    # Check if affected objects are enabled
+    if ($IncludeAffectedObjects) {
+         $MaesterParameters.Add('IncludeAffectedObjects', $true)
+         Write-Host "📃 Including affected objects."
     }
 
     # Check if mail recipients and mail userid are provided
