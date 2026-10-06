@@ -11,9 +11,9 @@ inputs:
     description: "App Registration Client ID"
     required: true
   include_public_tests:
-    description: "Include public test repository 'maester365/maester-tests' as well as private tests in the test run"
+    description: "Maester 2 only. Include public test repository 'maester365/maester-tests' as well as private tests in the test run. Empty (default) means 'true'. Has no effect on Maester 3, where the built-in tests ship in the module (use skip_builtin_tests instead)."
     required: false
-    default: "true"
+    default: ""
   include_private_tests:
     description: "Checkout the current repository for private tests. Disable this if you want to run the public tests only."
     required: false
@@ -48,9 +48,34 @@ inputs:
     default: ""
 
   maester_version:
-    description: "The version of Maester PowerShell to use. latest (default), preview, or a specific version number."
+    description: "The version of Maester PowerShell to use. latest (default), preview, or a specific version number. latest and preview resolve to the newest release within maester_major_version."
     required: false
     default: "latest"
+  maester_major_version:
+    description: "The Maester major version to run: '2' (default) or '3'. Set to '3' to opt in to Maester 3.0, see https://maester.dev/docs/upgrading-from-2x. An exact maester_version must belong to this major version."
+    required: false
+    default: "2"
+
+  skip_builtin_tests:
+    description: "Maester 3 only. Run only the custom tests in the repository (Invoke-Maester -SkipBuiltIn)."
+    required: false
+    default: "false"
+  install_pester:
+    description: "Maester 3 only. Always install Pester 5.7.1 or later. By default Pester is installed only when the repository contains Pester-format tests (*.Tests.ps1)."
+    required: false
+    default: "false"
+  test_ids:
+    description: "Maester 3 only. A list of test IDs to run, for example 'MT.1001,MT.1024.*'. Please separate multiple IDs with a comma."
+    required: false
+    default: ""
+  exclude_test_ids:
+    description: "Maester 3 only. A list of test IDs to exclude. Please separate multiple IDs with a comma."
+    required: false
+    default: ""
+  config_path:
+    description: "Maester 3 only. Path to a maester-config.json run configuration, relative to the repository root. When set, config files next to the tests are not read."
+    required: false
+    default: ""
 
   pester_verbosity:
     description: "Pester verbosity level. Options: 'None', 'Normal', 'Detailed', 'Diagnostic'"
@@ -119,6 +144,9 @@ outputs:
   result:
     description: "The result of the test run. 'Failed' if any tests failed, 'Passed' if all tests passed."
     value: ${{ steps.maester.outputs.result }}
+  maester_version:
+    description: "The exact Maester version that was installed and run."
+    value: ${{ steps.maester.outputs.maester_version }}
 
 
 runs:
@@ -129,9 +157,16 @@ runs:
       run: echo "NOW=$(date +'%Y-%m-%d-T%H%M%S')" >> $GITHUB_ENV
     
     - name: ❌ Log error message
-      if: ${{ inputs.include_public_tests != 'true' && inputs.include_private_tests != 'true' }}
+      if: ${{ inputs.maester_major_version != '3' && inputs.include_public_tests != 'true' && inputs.include_public_tests != '' && inputs.include_private_tests != 'true' }}
       run: |
         echo "::error title=No tests to run::Please set 'include_public_tests' or 'include_private_tests' to 'true'."
+        exit 1
+      shell: bash
+
+    - name: ❌ Log error message
+      if: ${{ inputs.maester_major_version == '3' && inputs.skip_builtin_tests == 'true' && inputs.include_private_tests != 'true' }}
+      run: |
+        echo "::error title=No tests to run::'skip_builtin_tests' runs only the custom tests, so 'include_private_tests' must be 'true'."
         exit 1
       shell: bash
 
@@ -162,7 +197,13 @@ runs:
           -ClientId '${{ inputs.client_id }}' `
           -Path '${{ github.workspace }}' `
           -MaesterVersion '${{ inputs.maester_version }}' `
-          -IncludePublicTests('${{ inputs.include_public_tests }}' -eq 'true') `
+          -MaesterMajorVersion '${{ inputs.maester_major_version }}' `
+          -IncludePublicTests '${{ inputs.include_public_tests }}' `
+          -SkipBuiltInTests ('${{ inputs.skip_builtin_tests }}' -eq 'true') `
+          -InstallPester ('${{ inputs.install_pester }}' -eq 'true') `
+          -TestIds '${{ inputs.test_ids }}' `
+          -ExcludeTestIds '${{ inputs.exclude_test_ids }}' `
+          -ConfigPath '${{ inputs.config_path }}' `
           -IncludeExchange ('${{ inputs.include_exchange }}' -eq 'true') `
           -IncludeTeams ('${{ inputs.include_teams }}' -eq 'true') `
           -IncludeLongRunning ('${{ inputs.include_longrunning_tests }}' -eq 'true') `
