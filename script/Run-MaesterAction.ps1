@@ -8,8 +8,8 @@
     [Parameter(Mandatory = $true, HelpMessage = 'The path for the files and pester tests')]
     [string]$Path,
 
-    [Parameter(Mandatory = $false, HelpMessage = 'If true, auto-update tests in public-tests to the version in the current module')]
-    [bool]$IncludePublicTests = $true,
+    [Parameter(Mandatory = $false, HelpMessage = "Maester 2 only. 'true' or empty installs the public tests into public-tests, 'false' skips them. Ignored on Maester 3, where the built-in tests ship in the module.")]
+    [string]$IncludePublicTests = '',
 
     [Parameter(Mandatory = $false, HelpMessage = 'The Pester verbosity level')]
     [ValidateSet('None', 'Normal', 'Detailed', 'Diagnostic')]
@@ -48,6 +48,24 @@
     [Parameter(Mandatory = $false, HelpMessage = 'Maester version to install, options: latest, preview, or specific version')]
     [string]$MaesterVersion = '',
 
+    [Parameter(Mandatory = $false, HelpMessage = "The Maester major version to run: '2' (default) or '3'. latest and preview resolve within this major version.")]
+    [string]$MaesterMajorVersion = '2',
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Maester 3 only. Run only the custom tests (Invoke-Maester -SkipBuiltIn).')]
+    [bool]$SkipBuiltInTests = $false,
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Maester 3 only. Always install Pester 5.7.1 or later, even when no *.Tests.ps1 file is found.')]
+    [bool]$InstallPester = $false,
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Maester 3 only. Test IDs to run, separated by comma (Invoke-Maester -TestId).')]
+    [string]$TestIds = '',
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Maester 3 only. Test IDs to exclude, separated by comma (Invoke-Maester -ExcludeTestId).')]
+    [string]$ExcludeTestIds = '',
+
+    [Parameter(Mandatory = $false, HelpMessage = 'Maester 3 only. Path to a maester-config.json run configuration (Invoke-Maester -Config).')]
+    [string]$ConfigPath = '',
+
     [Parameter(Mandatory = $false, HelpMessage = 'Disable telemetry')]
     [bool]$DisableTelemetry = $false,
 
@@ -68,38 +86,107 @@
 )
 
 BEGIN {
-    Write-Host "🔥 Maester Github Action 🔥 requested module: $MaesterVersion"
+    Write-Host "🔥 Maester Github Action 🔥 requested module: $MaesterVersion (major version: $MaesterMajorVersion)"
 
-    # Install Maester
-    if ($MaesterVersion -eq "latest" -or $MaesterVersion -eq "") {
-        Install-Module Maester -Scope CurrentUser -Force
-    } elseif ($MaesterVersion -eq "preview") {
-        Install-Module Maester -Scope CurrentUser -AllowPrerelease -Force
-    } else { # it is not empty and not latest or preview
+    $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+    . (Join-Path -Path $scriptPath -ChildPath 'MaesterActionHelpers.ps1')
+
+    function Exit-MaesterAction {
+        param (
+            [string]$Title,
+            [string]$Message
+        )
+        Write-Host "❌ $Message"
+        Write-Host "::error title=$Title::$Message"
+        exit 1
+    }
+
+    #region Validate inputs for the Maester major version
+    try {
+        $majorVersion = Get-MaesterMajorVersion -MajorVersion $MaesterMajorVersion
+    } catch {
+        Exit-MaesterAction -Title 'Invalid maester_major_version' -Message $_.Exception.Message
+    }
+
+    if ($majorVersion -eq 2) {
+        # Inputs that only exist in Maester 3. Fail rather than silently ignoring them.
+        $maester3Inputs = @(
+            if ($SkipBuiltInTests) { 'skip_builtin_tests' }
+            if (-not [string]::IsNullOrWhiteSpace($TestIds)) { 'test_ids' }
+            if (-not [string]::IsNullOrWhiteSpace($ExcludeTestIds)) { 'exclude_test_ids' }
+            if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) { 'config_path' }
+        )
+        if ($maester3Inputs.Count -gt 0) {
+            Exit-MaesterAction -Title 'Maester 3 inputs used with Maester 2' -Message "The input(s) $($maester3Inputs -join ', ') need Maester 3. Set maester_major_version: '3' to opt in (see https://maester.dev/docs/upgrading-from-2x), or remove them."
+        }
+        if ($InstallPester) {
+            Write-Host "::warning title=install_pester ignored::install_pester only applies to Maester 3. Maester 2 installs Pester as a dependency."
+        }
+    } else {
+        if ($PSVersionTable.PSVersion -lt [version]'7.4') {
+            Exit-MaesterAction -Title 'PowerShell 7.4 required' -Message "Maester $majorVersion needs PowerShell 7.4 or later. This runner has PowerShell $($PSVersionTable.PSVersion)."
+        }
+        if (-not [string]::IsNullOrWhiteSpace($IncludePublicTests)) {
+            Write-Host "::warning title=include_public_tests ignored::include_public_tests has no effect on Maester $majorVersion. The built-in tests ship inside the module and always run; set skip_builtin_tests: true to run only your custom tests."
+        }
+        $removedTags = @(Get-RemovedMaesterTag -Tags "$IncludeTags,$ExcludeTags")
+        if ($removedTags.Count -gt 0) {
+            Exit-MaesterAction -Title 'Removed tags' -Message "The tag(s) '$($removedTags -join "', '")' were removed in Maester 3.0. Remove them from include_tags / exclude_tags and use include_preview_tests instead of 'All' and include_longrunning_tests instead of 'Full'."
+        }
+    }
+    #endregion
+
+    #region Resolve and install Maester
+    $requestedVersion = $MaesterVersion.Trim()
+    if ([string]::IsNullOrEmpty($requestedVersion)) { $requestedVersion = 'latest' }
+
+    $availableVersions = @()
+    if ($requestedVersion -in 'latest', 'preview') {
         try {
-            Install-Module Maester -Scope CurrentUser -RequiredVersion $MaesterVersion -AllowPrerelease -Force
+            $availableVersions = @(Find-Module -Name Maester -AllVersions -AllowPrerelease:($requestedVersion -eq 'preview') -ErrorAction Stop | ForEach-Object { [string]$_.Version })
         } catch {
-            Write-Error "❌ Failed to install Maester version $MaesterVersion. Please check the version number."
-            Write-Error $_.Exception.Message
-            Write-Host "::error ::Failed to install Maester version $MaesterVersion. Please check the version number."
-            exit 1
+            Exit-MaesterAction -Title 'Failed to find Maester' -Message "Failed to list the Maester versions in the PowerShell Gallery. $($_.Exception.Message)"
         }
     }
 
-    # Get installed version of Maester
-    Import-Module Maester -Force -ErrorAction SilentlyContinue
-    $installedModule = Get-Module -Name 'Maester' -ListAvailable | Sort-Object -Property Version -Descending | Select-Object -First 1
-    $installedVersion = $installedModule | Select-Object -ExpandProperty Version
-    Write-Host "📃 Installed Maester version: $installedVersion"
+    try {
+        $resolvedVersion = Resolve-MaesterVersion -MaesterVersion $requestedVersion -MajorVersion $majorVersion -AvailableVersions $availableVersions
+    } catch {
+        Exit-MaesterAction -Title 'Invalid Maester version' -Message $_.Exception.Message
+    }
+    Write-Host "📦 Resolved Maester version: $($resolvedVersion.Version) (maester_version: '$requestedVersion', maester_major_version: '$majorVersion')"
 
-    # If specified, install/update public-tests to the version in the current module
-    if ($IncludePublicTests -eq $true) {
+    try {
+        Install-Module Maester -Scope CurrentUser -RequiredVersion $resolvedVersion.Version -AllowPrerelease -Force -ErrorAction Stop
+    } catch {
+        Write-Error "❌ Failed to install Maester version $($resolvedVersion.Version). Please check the version number."
+        Write-Error $_.Exception.Message
+        Write-Host "::error ::Failed to install Maester version $($resolvedVersion.Version). Please check the version number."
+        exit 1
+    }
+
+    # Import the resolved version, so a different Maester version on a self-hosted runner is not picked up
+    $resolvedBaseVersion = (ConvertTo-MaesterSemVer -Version $resolvedVersion.Version).Base
+    Import-Module Maester -RequiredVersion $resolvedBaseVersion -Force -ErrorAction SilentlyContinue
+    $installedModule = Get-Module -Name 'Maester' | Sort-Object -Property Version -Descending | Select-Object -First 1
+    if ($null -eq $installedModule) {
+        Exit-MaesterAction -Title 'Failed to import Maester' -Message "Maester $($resolvedVersion.Version) was installed but could not be imported."
+    }
+    $installedVersion = $installedModule | Select-Object -ExpandProperty Version
+    Write-Host "📃 Installed Maester version: $($resolvedVersion.Version) (major version $majorVersion)"
+    if ($env:GITHUB_OUTPUT) {
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "maester_version=$($resolvedVersion.Version)"
+    }
+    #endregion
+
+    # Maester 2: if specified, install/update public-tests to the version in the current module.
+    # Maester 3 ships the built-in tests inside the module, so there is nothing to install.
+    if ($majorVersion -eq 2 -and ($IncludePublicTests -eq 'true' -or [string]::IsNullOrWhiteSpace($IncludePublicTests))) {
         $publicTestsPath = Join-Path -Path $Path -ChildPath 'public-tests'
         Install-MaesterTests -Path $publicTestsPath
     }
 
     # if command Get-MtAccessTokenUsingCli is not found, import the file with dot-sourcing
-    $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
     if (-not (Get-Command Get-MtAccessTokenUsingCli -ErrorAction SilentlyContinue)) {
         $accessTokenScript = Join-Path -Path $scriptPath -ChildPath 'Get-MtAccessTokenUsingCli.ps1'
         if (Test-Path $accessTokenScript) {
@@ -145,6 +232,35 @@ BEGIN {
         $Path = (Get-Location).Path
         Write-Host "❔ No path provided. Using current directory $Path."
     }
+
+    # Maester 3 does not depend on Pester. Install it only when there are Pester-format custom tests
+    # (*.Tests.ps1) or when it was requested; otherwise those tests are reported as PesterNotAvailable errors.
+    if ($majorVersion -ge 3) {
+        $pesterTestFiles = @(Get-ChildItem -Path $Path -Filter '*.Tests.ps1' -Recurse -File -ErrorAction SilentlyContinue)
+        if ($InstallPester -or $pesterTestFiles.Count -gt 0) {
+            if ($pesterTestFiles.Count -gt 0) {
+                Write-Host "📃 Found $($pesterTestFiles.Count) Pester-format test file(s) (*.Tests.ps1), Pester 5.7.1 or later is needed."
+            }
+            $pesterModule = Get-Module -Name Pester -ListAvailable | Where-Object { $_.Version -ge [version]'5.7.1' } | Sort-Object -Property Version -Descending | Select-Object -First 1
+            if ($pesterModule) {
+                Write-Host "📃 Using installed Pester version: $($pesterModule.Version)"
+            } else {
+                try {
+                    Install-Module Pester -MinimumVersion 5.7.1 -Scope CurrentUser -SkipPublisherCheck -Force -ErrorAction Stop
+                    $pesterModule = Get-Module -Name Pester -ListAvailable | Sort-Object -Property Version -Descending | Select-Object -First 1
+                    Write-Host "📃 Installed Pester version: $($pesterModule.Version)"
+                } catch {
+                    Exit-MaesterAction -Title 'Failed to install Pester' -Message "Failed to install Pester 5.7.1 or later, which the Pester-format custom tests need. $($_.Exception.Message)"
+                }
+            }
+        } else {
+            Write-Host '📃 No Pester-format custom tests (*.Tests.ps1) found, Pester is not installed.'
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($ConfigPath) -and -not (Test-Path -Path $ConfigPath -PathType Leaf)) {
+            Exit-MaesterAction -Title 'Config not found' -Message "The config_path '$ConfigPath' does not exist."
+        }
+    }
 }
 PROCESS {
     $graphToken = Get-MtAccessTokenUsingCli -ResourceUrl 'https://graph.microsoft.com' -AsSecureString
@@ -180,19 +296,46 @@ PROCESS {
         Write-Host '📃 Teams tests will be skipped.'
     }
 
-    # Configure test results
-    $PesterConfiguration = New-PesterConfiguration
-    $PesterConfiguration.Output.Verbosity = $PesterVerbosity
-    Write-Host "📃 Pester verbosity level set to: $($PesterConfiguration.Output.Verbosity.Value)"
-
     $MaesterParameters = @{
         Path                 = $Path
-        PesterConfiguration  = $PesterConfiguration
         Verbosity            = $PesterVerbosity
         OutputFolder         = 'test-results'
         OutputFolderFileName = 'test-results'
         PassThru             = $true
         NonInteractive       = $true
+    }
+
+    if ($majorVersion -eq 2) {
+        # Configure test results
+        $PesterConfiguration = New-PesterConfiguration
+        $PesterConfiguration.Output.Verbosity = $PesterVerbosity
+        Write-Host "📃 Pester verbosity level set to: $($PesterConfiguration.Output.Verbosity.Value)"
+        $MaesterParameters.Add( 'PesterConfiguration', $PesterConfiguration )
+    } else {
+        # Maester 3 does not need Pester: -Verbosity also applies to Pester-format custom tests.
+        Write-Host "📃 Verbosity level set to: $PesterVerbosity"
+
+        if ($SkipBuiltInTests) {
+            $MaesterParameters.Add( 'SkipBuiltIn', $true )
+            Write-Host '📃 Skipping the built-in tests, running custom tests only.'
+        }
+
+        $TestIdList = @(Split-MaesterInputList -Value $TestIds)
+        if ($TestIdList.Count -gt 0) {
+            $MaesterParameters.Add( 'TestId', $TestIdList )
+            Write-Host "📃 Including tests with IDs: $TestIdList"
+        }
+
+        $ExcludeTestIdList = @(Split-MaesterInputList -Value $ExcludeTestIds)
+        if ($ExcludeTestIdList.Count -gt 0) {
+            $MaesterParameters.Add( 'ExcludeTestId', $ExcludeTestIdList )
+            Write-Host "📃 Excluding tests with IDs: $ExcludeTestIdList"
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) {
+            $MaesterParameters.Add( 'Config', (Resolve-Path -Path $ConfigPath).Path )
+            Write-Host "📃 Using run configuration: $ConfigPath"
+        }
     }
 
     # Check if test tags are provided
