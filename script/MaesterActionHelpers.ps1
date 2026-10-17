@@ -199,3 +199,25 @@ function Split-MaesterInputList {
 
     $Value -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 }
+
+function Test-MaesterUsesTestPath {
+    <#
+    .SYNOPSIS
+        Returns whether Invoke-Maester should get -Path (the workspace with the checked out tests).
+    .DESCRIPTION
+        Maester 2 always runs the tests from the workspace (public-tests and the checked out repository).
+        Maester 3 ships the built-in tests in the module, so without a checkout (include_private_tests: false)
+        there is nothing in the workspace to run and Invoke-Maester runs without -Path.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$MajorVersion,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IncludePrivateTests
+    )
+
+    $MajorVersion -lt 3 -or $IncludePrivateTests
+}

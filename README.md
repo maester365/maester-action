@@ -25,7 +25,7 @@ Check out the [Maester documentation](https://maester.dev/) for more information
 | `tenant_id`                   | Entra ID Tenant ID.                                                                            | ✅       |                             |
 | `client_id`                   | App Registration Client ID.                                                                    | ✅       |                             |
 | `include_public_tests`        | Maester 2 only. Install public tests from module. Empty means `true`. No effect on Maester 3 (use `skip_builtin_tests`). | ❌       | (empty, `true`)             |
-| `include_private_tests`       | Include private tests from the current repository.                                             | ❌       | `true`                      |
+| `include_private_tests`       | Check out the current repository. Maester 2: run the private tests in it. Maester 3: use its `maester-config.json` and custom tests, if there are any; set to `false` when the repository only holds the workflow file. | ❌       | `true`                      |
 | `include_exchange`            | Include Exchange Online tests in the test run.                                                 | ❌       | `false`                     |
 | `include_teams`               | Include Teams tests in the test run.                                                           | ❌       | `true`                      |
 | `include_longrunning_tests`   | Include long running tests.                                                                    | ❌       | `false`                     |
@@ -133,6 +133,14 @@ running **Maester 2.x** until you opt in: `maester_version: latest` and `preview
 while `maester_major_version` is `2` (the default), even after 3.0 is published. Nothing changes until you set
 `maester_major_version: "3"`.
 
+> [!NOTE]
+> A later major version of this action will default to Maester 3 once 3.0 is generally available. Pipelines
+> pinned to the current major version of the action (`v1`) keep running Maester 2.x.
+
+On Maester 3 your repository only needs the workflow file. You no longer need a copy of
+[maester-tests](https://github.com/maester365/maester-tests) or `Install-MaesterTests`: the built-in tests ship in
+the module. Add a `maester-config.json` or a `custom/` folder only if you want them.
+
 Before:
 
 ```yaml
@@ -155,14 +163,19 @@ After:
           client_id: ${{ secrets.AZURE_CLIENT_ID }}
           maester_major_version: "3"  # opt in to Maester 3.x
           maester_version: latest     # newest 3.x release (or 'preview', or an exact 3.x version)
+          # The repository only holds this workflow file, so there is nothing to check out.
+          # Leave this out (default 'true') if the repository has a maester-config.json or custom tests.
+          include_private_tests: false
 ```
 
 What changes on Maester 3:
 
 - **The built-in tests always run.** The action no longer installs the public tests (`maester365/maester-tests`)
   into the workspace, so `include_public_tests` has no effect (you get a warning if you set it). Your repository
-  holds only your custom tests and `maester-config.json`. Set `skip_builtin_tests: true` to run only your custom
-  tests, or use `include_tags`, `test_ids` and `exclude_test_ids` to pick tests.
+  needs only the workflow file, plus an optional `maester-config.json` and custom tests. With
+  `include_private_tests: false` the repository is not checked out and `Invoke-Maester` runs without `-Path`.
+  Set `skip_builtin_tests: true` to run only your custom tests (this needs `include_private_tests: true`), or use
+  `include_tags`, `test_ids` and `exclude_test_ids` to pick tests.
 - **Custom Pester tests need Pester.** Pester-format custom tests (`*.Tests.ps1`) need Pester 5.7.1 or later. The
   action installs it automatically when it finds `*.Tests.ps1` files in the repository; set `install_pester: true`
   to always install it.

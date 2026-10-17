@@ -84,3 +84,16 @@ Describe 'Split-MaesterInputList' {
         Split-MaesterInputList -Value '' | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Test-MaesterUsesTestPath' {
+    It 'Maester 2 always uses the workspace path' {
+        Test-MaesterUsesTestPath -MajorVersion 2 -IncludePrivateTests $false | Should -BeTrue
+        Test-MaesterUsesTestPath -MajorVersion 2 -IncludePrivateTests $true | Should -BeTrue
+    }
+    It 'Maester 3 uses the workspace path when the repository is checked out' {
+        Test-MaesterUsesTestPath -MajorVersion 3 -IncludePrivateTests $true | Should -BeTrue
+    }
+    It 'Maester 3 runs without a path when there is no checkout' {
+        Test-MaesterUsesTestPath -MajorVersion 3 -IncludePrivateTests $false | Should -BeFalse
+    }
+}
