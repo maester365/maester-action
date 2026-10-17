@@ -114,7 +114,8 @@ function Resolve-MaesterVersion {
     .DESCRIPTION
         - 'latest' (or empty): the newest stable release within the major version.
         - 'preview': the newest release within the major version, including prereleases.
-        - an exact version: that version, which must belong to the major version.
+        - an exact version: that version, which must belong to the major version. Major version 2 also
+          accepts exact 1.x versions, so pipelines pinned to an older release keep working.
 
         Returns an object with Version (the exact version string to install), Major and IsPrerelease.
 
@@ -153,7 +154,9 @@ function Resolve-MaesterVersion {
         if ($null -eq $parsed) {
             throw "maester_version '$MaesterVersion' is not valid. Use 'latest', 'preview' or an exact version number such as '$MajorVersion.0.0'."
         }
-        if ($parsed.Major -ne $MajorVersion) {
+        # Major version 2 is the pre-3.0 default, so it also accepts exact pins to older releases (1.x).
+        $belongsToMajor = $parsed.Major -eq $MajorVersion -or ($MajorVersion -eq 2 -and $parsed.Major -lt 2)
+        if (-not $belongsToMajor) {
             if ($parsed.Major -ge 3 -and $MajorVersion -lt 3) {
                 throw "maester_version '$requested' is a Maester $($parsed.Major) release, but maester_major_version is '$MajorVersion'. To opt in to Maester $($parsed.Major), also set maester_major_version: '$($parsed.Major)'. See https://maester.dev/docs/upgrading-from-2x before you upgrade."
             }

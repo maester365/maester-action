@@ -52,7 +52,7 @@ inputs:
     required: false
     default: "latest"
   maester_major_version:
-    description: "The Maester major version to run: '2' (default) or '3'. Set to '3' to opt in to Maester 3.0, see https://maester.dev/docs/upgrading-from-2x. An exact maester_version must belong to this major version."
+    description: "The Maester major version to run: '2' (default) or '3'. Set to '3' to opt in to Maester 3.0, see https://maester.dev/docs/upgrading-from-2x. An exact maester_version must belong to this major version ('2' also accepts exact 1.x versions)."
     required: false
     default: "2"
 

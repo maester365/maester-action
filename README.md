@@ -34,7 +34,7 @@ Check out the [Maester documentation](https://maester.dev/) for more information
 | `include_tags`                | A list of tags to include in the test run (comma-separated).                                   | ❌       |                             |
 | `exclude_tags`                | A list of tags to exclude from the test run (comma-separated).                                 | ❌       |                             |
 | `maester_version`             | The version of Maester PowerShell to use (`latest`, `preview`, or specific version). `latest` and `preview` resolve to the newest release within `maester_major_version`. | ❌       | `latest`                    |
-| `maester_major_version`       | The Maester major version to run: `2` or `3`. Set to `3` to opt in to Maester 3.0, see [Upgrading to Maester 3.0](#upgrading-to-maester-30). An exact `maester_version` must belong to this major version. | ❌       | `2`                         |
+| `maester_major_version`       | The Maester major version to run: `2` or `3`. Set to `3` to opt in to Maester 3.0, see [Upgrading to Maester 3.0](#upgrading-to-maester-30). An exact `maester_version` must belong to this major version (`2` also accepts exact 1.x versions). | ❌       | `2`                         |
 | `skip_builtin_tests`          | Maester 3 only. Run only the custom tests in the repository (`Invoke-Maester -SkipBuiltIn`).    | ❌       | `false`                     |
 | `install_pester`              | Maester 3 only. Always install Pester 5.7.1 or later. By default it is installed only when the repository contains `*.Tests.ps1` files. | ❌       | `false`                     |
 | `test_ids`                    | Maester 3 only. Test IDs to run, comma-separated, `*` wildcards allowed (`-TestId`).            | ❌       |                             |
@@ -135,7 +135,9 @@ while `maester_major_version` is `2` (the default), even after 3.0 is published.
 
 > [!NOTE]
 > A later major version of this action will default to Maester 3 once 3.0 is generally available. Pipelines
-> pinned to the current major version of the action (`v1`) keep running Maester 2.x.
+> pinned to a 1.x release of the action (for example `maester365/maester-action@v1.2.0`) or to a commit SHA keep
+> running Maester 2.x. Pipelines that use `@main` get the new default when it ships; set
+> `maester_major_version: "2"` now to stay on Maester 2.x.
 
 On Maester 3 your repository only needs the workflow file. You no longer need a copy of
 [maester-tests](https://github.com/maester365/maester-tests) or `Install-MaesterTests`: the built-in tests ship in
@@ -185,7 +187,8 @@ What changes on Maester 3:
 - **New inputs:** `skip_builtin_tests`, `install_pester`, `test_ids`, `exclude_test_ids` and `config_path`. They
   only work on Maester 3; the action fails if you set them while `maester_major_version` is `2`.
 - An exact `maester_version` must match `maester_major_version`: `maester_version: 3.0.0` with
-  `maester_major_version: "2"` fails with an error instead of guessing.
+  `maester_major_version: "2"` fails with an error instead of guessing. Exact 1.x versions still work with
+  `maester_major_version: "2"`.
 
 Read [Upgrading from Maester 2.x](https://maester.dev/docs/upgrading-from-2x) before you switch, and try the
 upgrade on a branch or with `workflow_dispatch` first.

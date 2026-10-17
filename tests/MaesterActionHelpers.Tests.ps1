@@ -36,6 +36,10 @@ Describe 'Resolve-MaesterVersion' {
         It 'an exact 2.x version wins' {
             (Resolve-MaesterVersion -MaesterVersion '2.1.0' -MajorVersion 2).Version | Should -Be '2.1.0'
         }
+        It 'an exact 1.x version still works, for pipelines pinned to an older release' {
+            (Resolve-MaesterVersion -MaesterVersion '1.3.0' -MajorVersion 2).Version | Should -Be '1.3.0'
+            (Resolve-MaesterVersion -MaesterVersion '1.3.137-preview' -MajorVersion 2).Version | Should -Be '1.3.137-preview'
+        }
         It 'an exact 3.x version fails and explains how to opt in' {
             { Resolve-MaesterVersion -MaesterVersion '3.0.0' -MajorVersion 2 } | Should -Throw "*maester_major_version: '3'*"
         }
@@ -56,6 +60,9 @@ Describe 'Resolve-MaesterVersion' {
         }
         It 'latest fails when no 3.x stable release exists yet' {
             { Resolve-MaesterVersion -MaesterVersion 'latest' -MajorVersion 3 -AvailableVersions '3.0.0-preview', '2.2.0' } | Should -Throw '*No Maester 3.x stable release*'
+        }
+        It 'an exact 1.x version fails' {
+            { Resolve-MaesterVersion -MaesterVersion '1.3.0' -MajorVersion 3 } | Should -Throw "*maester_major_version is '3'*"
         }
         It 'an exact 2.x version fails' {
             { Resolve-MaesterVersion -MaesterVersion '2.2.0' -MajorVersion 3 } | Should -Throw "*maester_major_version is '3'*"
