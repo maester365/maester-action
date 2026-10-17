@@ -11,6 +11,9 @@
     [Parameter(Mandatory = $false, HelpMessage = "Maester 2 only. 'true' or empty installs the public tests into public-tests, 'false' skips them. Ignored on Maester 3, where the built-in tests ship in the module.")]
     [string]$IncludePublicTests = '',
 
+    [Parameter(Mandatory = $false, HelpMessage = 'Whether the current repository was checked out (include_private_tests). On Maester 3, false runs the built-in tests from the module without -Path.')]
+    [bool]$IncludePrivateTests = $true,
+
     [Parameter(Mandatory = $false, HelpMessage = 'The Pester verbosity level')]
     [ValidateSet('None', 'Normal', 'Detailed', 'Diagnostic')]
     [string]$PesterVerbosity = 'None',
@@ -126,6 +129,9 @@ BEGIN {
         if ($PSVersionTable.PSVersion -lt [version]'7.4') {
             Exit-MaesterAction -Title 'PowerShell 7.4 required' -Message "Maester $majorVersion needs PowerShell 7.4 or later. This runner has PowerShell $($PSVersionTable.PSVersion)."
         }
+        if ($SkipBuiltInTests -and -not $IncludePrivateTests) {
+            Exit-MaesterAction -Title 'No tests to run' -Message "'skip_builtin_tests' runs only the custom tests, so 'include_private_tests' must be 'true'."
+        }
         if (-not [string]::IsNullOrWhiteSpace($IncludePublicTests)) {
             Write-Host "::warning title=include_public_tests ignored::include_public_tests has no effect on Maester $majorVersion. The built-in tests ship inside the module and always run; set skip_builtin_tests: true to run only your custom tests."
         }
@@ -233,10 +239,15 @@ BEGIN {
         Write-Host "❔ No path provided. Using current directory $Path."
     }
 
+    $useTestPath = Test-MaesterUsesTestPath -MajorVersion $majorVersion -IncludePrivateTests $IncludePrivateTests
+    if (-not $useTestPath) {
+        Write-Host '📃 Repository not checked out (include_private_tests: false), running the built-in tests from the module.'
+    }
+
     # Maester 3 does not depend on Pester. Install it only when there are Pester-format custom tests
     # (*.Tests.ps1) or when it was requested; otherwise those tests are reported as PesterNotAvailable errors.
     if ($majorVersion -ge 3) {
-        $pesterTestFiles = @(Get-ChildItem -Path $Path -Filter '*.Tests.ps1' -Recurse -File -ErrorAction SilentlyContinue)
+        $pesterTestFiles = @(if ($useTestPath) { Get-ChildItem -Path $Path -Filter '*.Tests.ps1' -Recurse -File -ErrorAction SilentlyContinue })
         if ($InstallPester -or $pesterTestFiles.Count -gt 0) {
             if ($pesterTestFiles.Count -gt 0) {
                 Write-Host "📃 Found $($pesterTestFiles.Count) Pester-format test file(s) (*.Tests.ps1), Pester 5.7.1 or later is needed."
@@ -297,12 +308,14 @@ PROCESS {
     }
 
     $MaesterParameters = @{
-        Path                 = $Path
         Verbosity            = $PesterVerbosity
         OutputFolder         = 'test-results'
         OutputFolderFileName = 'test-results'
         PassThru             = $true
         NonInteractive       = $true
+    }
+    if ($useTestPath) {
+        $MaesterParameters.Add( 'Path', $Path )
     }
 
     if ($majorVersion -eq 2) {

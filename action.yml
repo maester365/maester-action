@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   include_private_tests:
-    description: "Checkout the current repository for private tests. Disable this if you want to run the public tests only."
+    description: "Checkout the current repository. Maester 2: runs the private tests in it; disable this to run the public tests only. Maester 3: uses its maester-config.json and custom tests, if there are any; set to 'false' when the repository only holds the workflow file, and the built-in tests run from the module."
     required: false
     default: "true"
   include_exchange:
@@ -52,7 +52,7 @@ inputs:
     required: false
     default: "latest"
   maester_major_version:
-    description: "The Maester major version to run: '2' (default) or '3'. Set to '3' to opt in to Maester 3.0, see https://maester.dev/docs/upgrading-from-2x. An exact maester_version must belong to this major version."
+    description: "The Maester major version to run: '2' (default) or '3'. Set to '3' to opt in to Maester 3.0, see https://maester.dev/docs/upgrading-from-2x. An exact maester_version must belong to this major version ('2' also accepts exact 1.x versions)."
     required: false
     default: "2"
 
@@ -199,6 +199,7 @@ runs:
           -MaesterVersion '${{ inputs.maester_version }}' `
           -MaesterMajorVersion '${{ inputs.maester_major_version }}' `
           -IncludePublicTests '${{ inputs.include_public_tests }}' `
+          -IncludePrivateTests ('${{ inputs.include_private_tests }}' -eq 'true') `
           -SkipBuiltInTests ('${{ inputs.skip_builtin_tests }}' -eq 'true') `
           -InstallPester ('${{ inputs.install_pester }}' -eq 'true') `
           -TestIds '${{ inputs.test_ids }}' `
