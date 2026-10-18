@@ -82,6 +82,8 @@ jobs:
     steps:
       - name: ✅ Checkout action
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: 🧪 Run Pester unit tests
         shell: pwsh
